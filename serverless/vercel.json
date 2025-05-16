@@ -1,9 +1,9 @@
 {
   "routes": [
     {
-      "src": "/",
-      "dest": "/api/chat.js",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+      "src": "/api/population",
+      "dest": "/api/population.js",
+      "methods": ["GET"]
     }
   ]
 }
