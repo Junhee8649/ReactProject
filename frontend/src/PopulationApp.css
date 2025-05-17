@@ -1,106 +1,99 @@
-/* 기본 레이아웃 */
-.app-container {
+/* 컨트롤 패널 스타일 */
+.control-panel {
   display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-}
-
-.app-header {
-  background-color: #075985;
-  color: white;
-  padding: 1rem 2rem;
-  text-align: center;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 1.8rem;
-}
-
-.last-updated {
-  font-size: 0.8rem;
-  opacity: 0.8;
-  margin: 0.5rem 0 0;
-}
-
-.main-content {
-  flex: 1;
-  padding: 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.app-footer {
-  background-color: #f3f4f6;
-  padding: 1rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: #6b7280;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-/* 지도 컴포넌트 */
-.map-container {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 1rem 0;
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 500px;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  color: #6b7280;
-}
-
-.error-container {
-  padding: 1rem;
-  background-color: #fee2e2;
-  color: #b91c1c;
-  border-radius: 6px;
-  margin: 1rem 0;
-  border: 1px solid #fecaca;
-}
-
-.error-message {
-  padding: 0.75rem;
-  background-color: #fee2e2;
-  color: #b91c1c;
-  border-radius: 6px;
-  margin: 1rem 0;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-/* 필터 컴포넌트 */
-.filter-container {
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.filter-container h3 {
+/* 지역 검색 스타일 */
+.area-search {
+  flex: 1;
+  min-width: 250px;
+  position: relative;
+}
+
+.area-search h3 {
   margin-top: 0;
   margin-bottom: 0.5rem;
   font-size: 1.2rem;
   color: #1f2937;
 }
 
-.age-filters {
+.search-container {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.5rem;
+  position: relative;
 }
 
-.filter-btn {
+.search-input {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  padding-right: 2.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.search-button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 4px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.search-result-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.search-result-item:hover {
+  background-color: #f3f4f6;
+}
+
+/* 카테고리 스타일 */
+.area-categories {
+  flex: 1;
+  min-width: 250px;
+}
+
+.area-categories h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  color: #1f2937;
+}
+
+.category-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.category-dropdown {
+  position: relative;
+}
+
+.category-button {
   background-color: #f3f4f6;
   border: 1px solid #d1d5db;
   border-radius: 4px;
@@ -110,149 +103,68 @@
   transition: all 0.2s ease;
 }
 
-.filter-btn:hover {
+.category-button:hover {
   background-color: #e5e7eb;
 }
 
-.filter-btn.active {
+.category-button.active {
   background-color: #3b82f6;
   color: white;
   border-color: #2563eb;
 }
 
-.filter-info {
-  font-size: 0.85rem;
-  color: #6b7280;
-  font-style: italic;
-}
-
-/* 장소 상세 정보 */
-.place-detail {
-  margin-top: 1rem;
+.category-areas {
+  position: absolute;
+  top: 100%;
+  left: 0;
   background-color: white;
-  border-radius: 8px;
-  padding: 1.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  min-width: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 4px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.place-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.category-area-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.category-area-item:hover {
+  background-color: #f3f4f6;
+}
+
+/* 선택된 지역 표시 */
+.selected-area-info {
+  background-color: #f3f4f6;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.place-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #1f2937;
-}
-
-.close-btn {
+.clear-btn {
   background: none;
   border: none;
-  color: #6b7280;
+  color: #3b82f6;
   cursor: pointer;
   font-size: 0.9rem;
   padding: 0.25rem 0.5rem;
 }
 
-.close-btn:hover {
-  color: #1f2937;
-}
-
-.place-stats {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 1.5rem;
-}
-
-.stat-item {
-  flex: 1;
-}
-
-.stat-item h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.9rem;
-  color: #6b7280;
-}
-
-.stat-item p {
-  margin: 0 0 0.25rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.stat-item small {
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-
-/* 성별 비율 표시 */
-.gender-ratio {
-  margin-top: 0.5rem;
-}
-
-.gender-bar {
-  display: flex;
-  height: 30px;
-  width: 100%;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.male-ratio, .female-ratio {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.gender-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-}
-
-.male-label {
-  color: #3b82f6;
-}
-
-.female-label {
-  color: #ec4899;
-}
-
-.age-distribution h3 {
-  margin: 0.5rem 0 1rem;
-  font-size: 1rem;
-  color: #374151;
-}
-
-.chart-container {
-  background-color: #f9fafb;
-  border-radius: 4px;
-  padding: 1rem;
+.clear-btn:hover {
+  text-decoration: underline;
 }
 
 /* 미디어 쿼리 */
 @media (max-width: 768px) {
-  .app-header {
-    padding: 1rem;
-  }
-  
-  .app-header h1 {
-    font-size: 1.5rem;
-  }
-  
-  .main-content {
-    padding: 0.5rem;
-  }
-  
-  .place-stats {
+  .control-panel {
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 }
