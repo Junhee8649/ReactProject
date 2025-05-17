@@ -1,9 +1,11 @@
-import ChatApp from "./ChatApp";
+import PopulationApp from "./PopulationApp";
+
 function App() {
   return (
     <div className="App">
-      <ChatApp />
+      <PopulationApp />
     </div>
   );
 }
+
 export default App;
