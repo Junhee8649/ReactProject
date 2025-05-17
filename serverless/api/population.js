@@ -15,28 +15,101 @@ export default async function handler(req, res) {
     // 요청 파라미터 처리
     const { area } = req.query;
     
-    // 기본 URL 구성
-    let apiUrl;
+    // 지역명 매핑 함수
+    const mapAreaName = (inputArea) => {
+      if (!inputArea) return null;
+      
+      // 정확한 매핑 테이블
+      const exactMapping = {
+        // 관광특구
+        '강남': '강남 MICE 관광특구',
+        '강남구': '강남 MICE 관광특구',
+        '동대문': '동대문 관광특구',
+        '명동': '명동 관광특구',
+        '이태원': '이태원 관광특구',
+        '홍대': '홍대 관광특구',
+        '홍익대': '홍대 관광특구',
+        '종로': '종로·청계 관광특구',
+        '청계': '종로·청계 관광특구',
+        
+        // 역
+        '홍대입구역': '홍대입구역(2호선)',
+        '홍대입구': '홍대입구역(2호선)',
+        '홍대역': '홍대입구역(2호선)',
+        
+        // 시장
+        '동대문 시장': '동대문 관광특구',
+        '남대문 시장': '남대문시장',
+        '광장 시장': '광장(전통)시장',
+        
+        // 추가 매핑
+      };
+      
+      // 정확히 일치하는 매핑이 있는지 확인
+      if (exactMapping[inputArea]) {
+        return exactMapping[inputArea];
+      }
+      
+      // 정확한 매핑이 없으면 원래 값 사용
+      return inputArea;
+    };
     
-    if (area) {
-      // 특정 지역이 요청된 경우
-      apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(area)}`;
-    } else {
-      // 지역이 지정되지 않은 경우 몇 개의 기본 지역 데이터를 가져옴
-      apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/강남 MICE 관광특구`;
+    // 매핑된 지역명 적용
+    let requestArea = area ? mapAreaName(area) : '강남 MICE 관광특구'; // 기본값 설정
+    
+    // API 호출 시도 및 실패 시 재시도 로직
+    let apiUrl, response, rawData;
+    
+    try {
+      // 표준 API 요청
+      apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(requestArea)}`;
+      console.log(`Trying API call with: "${requestArea}"`);
+      
+      response = await fetch(apiUrl);
+      rawData = await response.json();
+      
+      // 첫 시도 실패 시 테스트
+      if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
+        console.log(`No data found for "${requestArea}", trying alternative...`);
+        
+        // 괄호 제거 시도
+        const cleanedArea = requestArea.replace(/\([^\)]+\)/g, '').trim();
+        if (cleanedArea !== requestArea) {
+          apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(cleanedArea)}`;
+          console.log(`Retrying with: "${cleanedArea}"`);
+          
+          response = await fetch(apiUrl);
+          rawData = await response.json();
+        }
+      }
+      
+      // 여전히 데이터 없으면 "관광특구" 접미사 추가 시도
+      if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
+        // 특정 지역명인 경우 관광특구 시도
+        const locationKeywords = ['강남', '동대문', '명동', '이태원', '홍대'];
+        const matchKeyword = locationKeywords.find(k => requestArea.includes(k));
+        
+        if (matchKeyword && !requestArea.includes('관광특구')) {
+          const touristArea = `${matchKeyword} 관광특구`;
+          apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(touristArea)}`;
+          console.log(`Trying with tourist area: "${touristArea}"`);
+          
+          response = await fetch(apiUrl);
+          rawData = await response.json();
+        }
+      }
+      
+      // 여전히 데이터 없으면 오류 반환
+      if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
+        return res.status(404).json({
+          error: "요청한 지역의 데이터를 찾을 수 없습니다",
+          message: "정확한 지역명으로 다시 시도해보세요"
+        });
+      }
+    } catch (error) {
+      console.error(`API request error: ${error.message}`);
+      throw new Error(`서울시 API 요청 중 오류: ${error.message}`);
     }
-    
-    console.log(`Calling Seoul API: ${apiUrl}`);
-    
-    // 실제 API 호출
-    const response = await fetch(apiUrl);
-    
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
-    
-    const rawData = await response.json();
-    console.log("API Response Keys:", Object.keys(rawData));
     
     // API 응답 확인
     if (rawData.RESULT && rawData.RESULT["RESULT.CODE"] !== "INFO-000") {
@@ -100,13 +173,14 @@ function getCoordinatesForPlace(placeName, placeCode) {
     '명동 관광특구': [37.5634, 126.9830],
     '이태원 관광특구': [37.5347, 126.9941],
     '홍대 관광특구': [37.5552, 126.9206],
+    '종로·청계 관광특구': [37.5704, 126.9922],
     '경복궁': [37.5769, 126.9769],
     '광화문광장': [37.5725, 126.9769],
     '남산공원': [37.5512, 126.9882],
     '여의도공원': [37.5249, 126.9237],
     '올림픽공원': [37.5221, 127.1214],
     '강남역': [37.4982, 127.0279],
-    '홍대입구역': [37.5574, 126.9245],
+    '홍대입구역(2호선)': [37.5574, 126.9245],
     '서울역': [37.5561, 126.9715],
     '사당역': [37.4766, 126.9816],
     '잠실역': [37.5132, 127.1001],
