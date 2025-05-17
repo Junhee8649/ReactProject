@@ -1,3 +1,4 @@
+// frontend/src/components/PopulationMap.jsx
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Circle, Tooltip, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -21,7 +22,20 @@ function MapCenterUpdater({ center, zoom }) {
   const map = useMap();
   
   useEffect(() => {
-    map.setView(center, zoom);
+    // 유효한 좌표인지 확인 후 적용
+    if (Array.isArray(center) && center.length === 2 && 
+        typeof center[0] === 'number' && typeof center[1] === 'number') {
+      try {
+        map.setView(center, zoom);
+      } catch (error) {
+        console.error("Map update error:", error);
+        // 오류 발생 시 기본값으로
+        map.setView(SEOUL_CENTER, DEFAULT_ZOOM);
+      }
+    } else {
+      // 잘못된 좌표가 전달된 경우 기본값 사용
+      map.setView(SEOUL_CENTER, DEFAULT_ZOOM);
+    }
   }, [center, zoom, map]);
   
   return null;
@@ -49,13 +63,31 @@ function PopulationMap() {
     fetchAreas();
   }, [fetchData, fetchAreas]);
 
-  // 선택된 장소나 지역으로 지도 중심 이동
-  const mapCenter = selectedPlace 
-    ? selectedPlace.coordinates 
-    : selectedArea 
-      ? availableAreas.find(a => a.id === selectedArea)?.coordinates
-      : SEOUL_CENTER;
-  
+  // 안전한 좌표 처리 로직 추가
+  const mapCenter = React.useMemo(() => {
+    // 선택된 장소가 있고 유효한 좌표가 있는 경우
+    if (selectedPlace && Array.isArray(selectedPlace.coordinates) && 
+        selectedPlace.coordinates.length === 2 &&
+        typeof selectedPlace.coordinates[0] === 'number' && 
+        typeof selectedPlace.coordinates[1] === 'number') {
+      return selectedPlace.coordinates;
+    }
+    
+    // 선택된 지역이 있는 경우
+    if (selectedArea) {
+      const areaObj = availableAreas.find(a => a.id === selectedArea);
+      if (areaObj && Array.isArray(areaObj.coordinates) && 
+          areaObj.coordinates.length === 2 &&
+          typeof areaObj.coordinates[0] === 'number' && 
+          typeof areaObj.coordinates[1] === 'number') {
+        return areaObj.coordinates;
+      }
+    }
+    
+    // 항상 기본값 반환 (안전장치)
+    return SEOUL_CENTER;
+  }, [selectedPlace, selectedArea, availableAreas]);
+
   const mapZoom = (selectedPlace || selectedArea) ? 15 : DEFAULT_ZOOM;
 
   if (isLoading && !filteredData) {
@@ -81,27 +113,43 @@ function PopulationMap() {
         <MapCenterUpdater center={mapCenter} zoom={mapZoom} />
         
         {/* 모든 가용 지역 마커 표시 (작은 크기) */}
-        {availableAreas.length > 0 && availableAreas.map(area => (
-          <Circle
-            key={`area-${area.id}`}
-            center={area.coordinates}
-            radius={80}
-            pathOptions={{
-              fillColor: '#6b7280',
-              color: '#6b7280',
-              fillOpacity: 0.3,
-              weight: 1
-            }}
-            eventHandlers={{
-              click: () => selectArea(area.id)
-            }}
-          >
-            <Tooltip>{area.name}</Tooltip>
-          </Circle>
-        ))}
+        {availableAreas.length > 0 && availableAreas.map(area => {
+          // 좌표 유효성 확인
+          if (!area.coordinates || 
+              !Array.isArray(area.coordinates) || 
+              area.coordinates.length !== 2) {
+            return null;
+          }
+          
+          return (
+            <Circle
+              key={`area-${area.id}`}
+              center={area.coordinates}
+              radius={80}
+              pathOptions={{
+                fillColor: '#6b7280',
+                color: '#6b7280',
+                fillOpacity: 0.3,
+                weight: 1
+              }}
+              eventHandlers={{
+                click: () => selectArea(area.id)
+              }}
+            >
+              <Tooltip>{area.name}</Tooltip>
+            </Circle>
+          );
+        })}
         
         {/* 필터링된, 더 자세한 인구 데이터가 있는 지역 표시 */}
         {filteredData && filteredData.map(place => {
+          // 좌표 유효성 확인
+          if (!place.coordinates || 
+              !Array.isArray(place.coordinates) || 
+              place.coordinates.length !== 2) {
+            return null;
+          }
+          
           // 선택된 나이대 또는 혼잡도 기준 시각화
           let circleColor;
           let circleRadius;
@@ -148,7 +196,7 @@ function PopulationMap() {
           );
         })}
         
-        {selectedPlace && (
+        {selectedPlace && Array.isArray(selectedPlace.coordinates) && selectedPlace.coordinates.length === 2 && (
           <Marker position={selectedPlace.coordinates} />
         )}
       </MapContainer>
