@@ -120,25 +120,30 @@ const usePopulationStore = create(
       
       // 지역 선택 액션
       selectArea: (areaId) => {
-        const { availableAreas } = get();
-        const selectedArea = areaId ? 
+        const { availableAreas, selectedArea } = get();
+        
+        // 같은 지역 재선택 시 강제 데이터 갱신을 위한 처리
+        const isReselectingSameArea = selectedArea === areaId && areaId !== null;
+        
+        const selectedAreaObj = areaId ? 
           availableAreas.find(a => a.id === areaId) : null;
         
         set({ 
-          selectedArea: selectedArea ? selectedArea.id : null,
+          selectedArea: selectedAreaObj ? selectedAreaObj.id : null,
           searchText: '',
           searchResults: [],
           selectedPlace: null // 지역 변경 시 선택된 장소 초기화
         });
         
         // 선택된 지역에 따라 데이터 다시 가져오기
-        if (selectedArea) {
-          get().fetchData();
+        if (selectedAreaObj || isReselectingSameArea) {
+          // 강제 갱신 플래그 추가
+          get().fetchData(null, isReselectingSameArea);
         }
       },
       
       // 인구 데이터 가져오기 액션 (직접 지역명 입력 지원)
-      fetchData: async (directAreaName = null) => {
+      fetchData: async (directAreaName = null, forceRefresh = false) => {
         set({ isLoading: true, error: null });
         try {
           const { selectedArea } = get();
@@ -170,7 +175,13 @@ const usePopulationStore = create(
             url = `${url}?area=${encodeURIComponent(area)}`;
           }
           
-          console.log("Fetching population data from:", url);
+          // 캐시 무효화를 위한 타임스탬프 추가 (forceRefresh가 true일 때)
+          if (forceRefresh) {
+            const timestamp = new Date().getTime();
+            url = `${url}${url.includes('?') ? '&' : '?'}t=${timestamp}`;
+          }
+          
+          console.log(`Fetching population data from: ${url} (forceRefresh: ${forceRefresh})`);
           
           // API 호출
           const response = await fetch(url);

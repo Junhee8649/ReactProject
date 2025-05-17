@@ -22,10 +22,22 @@ function MapCenterUpdater({ center, zoom }) {
   const map = useMap();
   
   useEffect(() => {
-    // 유효한 좌표인지 확인 후 적용
-    if (Array.isArray(center) && center.length === 2 && 
-        typeof center[0] === 'number' && typeof center[1] === 'number') {
+    // 유효한 좌표인지 엄격하게 확인 후 적용
+    const isValidCoordinate = (coord) => {
+      return Array.isArray(coord) && 
+             coord.length === 2 && 
+             typeof coord[0] === 'number' && 
+             !isNaN(coord[0]) &&
+             typeof coord[1] === 'number' && 
+             !isNaN(coord[1]) &&
+             // 서울 영역 대략적 범위 검사 추가
+             coord[0] >= 37.4 && coord[0] <= 37.7 && 
+             coord[1] >= 126.8 && coord[1] <= 127.2;
+    };
+    
+    if (isValidCoordinate(center)) {
       try {
+        console.log(`지도 중심 이동: ${center[0]}, ${center[1]} (줌: ${zoom})`);
         map.setView(center, zoom);
       } catch (error) {
         console.error("Map update error:", error);
@@ -33,6 +45,7 @@ function MapCenterUpdater({ center, zoom }) {
         map.setView(SEOUL_CENTER, DEFAULT_ZOOM);
       }
     } else {
+      console.warn("잘못된 좌표가 전달됨:", center);
       // 잘못된 좌표가 전달된 경우 기본값 사용
       map.setView(SEOUL_CENTER, DEFAULT_ZOOM);
     }
@@ -63,23 +76,30 @@ function PopulationMap() {
     fetchAreas();
   }, [fetchData, fetchAreas]);
 
-  // 안전한 좌표 처리 로직 추가
+  // 안전한 좌표 처리 로직
   const mapCenter = React.useMemo(() => {
+    // 좌표 유효성 검사 함수
+    const isValidCoordinate = (coord) => {
+      return Array.isArray(coord) && 
+             coord.length === 2 && 
+             typeof coord[0] === 'number' && 
+             !isNaN(coord[0]) &&
+             typeof coord[1] === 'number' && 
+             !isNaN(coord[1]) &&
+             // 서울 영역 대략적 범위 검사 추가
+             coord[0] >= 37.4 && coord[0] <= 37.7 && 
+             coord[1] >= 126.8 && coord[1] <= 127.2;
+    };
+    
     // 선택된 장소가 있고 유효한 좌표가 있는 경우
-    if (selectedPlace && Array.isArray(selectedPlace.coordinates) && 
-        selectedPlace.coordinates.length === 2 &&
-        typeof selectedPlace.coordinates[0] === 'number' && 
-        typeof selectedPlace.coordinates[1] === 'number') {
+    if (selectedPlace && isValidCoordinate(selectedPlace.coordinates)) {
       return selectedPlace.coordinates;
     }
     
     // 선택된 지역이 있는 경우
     if (selectedArea) {
       const areaObj = availableAreas.find(a => a.id === selectedArea);
-      if (areaObj && Array.isArray(areaObj.coordinates) && 
-          areaObj.coordinates.length === 2 &&
-          typeof areaObj.coordinates[0] === 'number' && 
-          typeof areaObj.coordinates[1] === 'number') {
+      if (areaObj && isValidCoordinate(areaObj.coordinates)) {
         return areaObj.coordinates;
       }
     }
@@ -117,7 +137,11 @@ function PopulationMap() {
           // 좌표 유효성 확인
           if (!area.coordinates || 
               !Array.isArray(area.coordinates) || 
-              area.coordinates.length !== 2) {
+              area.coordinates.length !== 2 ||
+              !area.coordinates.every(coord => typeof coord === 'number' && !isNaN(coord)) ||
+              // 서울 영역 범위 검사
+              area.coordinates[0] < 37.4 || area.coordinates[0] > 37.7 ||
+              area.coordinates[1] < 126.8 || area.coordinates[1] > 127.2) {
             return null;
           }
           
@@ -146,7 +170,11 @@ function PopulationMap() {
           // 좌표 유효성 확인
           if (!place.coordinates || 
               !Array.isArray(place.coordinates) || 
-              place.coordinates.length !== 2) {
+              place.coordinates.length !== 2 ||
+              !place.coordinates.every(coord => typeof coord === 'number' && !isNaN(coord)) ||
+              // 서울 영역 범위 검사
+              place.coordinates[0] < 37.4 || place.coordinates[0] > 37.7 ||
+              place.coordinates[1] < 126.8 || place.coordinates[1] > 127.2) {
             return null;
           }
           
@@ -196,8 +224,24 @@ function PopulationMap() {
           );
         })}
         
-        {selectedPlace && Array.isArray(selectedPlace.coordinates) && selectedPlace.coordinates.length === 2 && (
-          <Marker position={selectedPlace.coordinates} />
+        {selectedPlace && Array.isArray(selectedPlace.coordinates) && 
+         selectedPlace.coordinates.length === 2 &&
+         selectedPlace.coordinates.every(coord => typeof coord === 'number' && !isNaN(coord)) &&
+         selectedPlace.coordinates[0] >= 37.4 && selectedPlace.coordinates[0] <= 37.7 &&
+         selectedPlace.coordinates[1] >= 126.8 && selectedPlace.coordinates[1] <= 127.2 && (
+          <Marker 
+            position={selectedPlace.coordinates}
+            icon={new L.Icon({
+              iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+              iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34],
+              shadowSize: [41, 41],
+              className: 'custom-marker-icon'
+            })}
+          />
         )}
       </MapContainer>
     </div>
