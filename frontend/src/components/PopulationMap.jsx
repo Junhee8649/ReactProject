@@ -31,31 +31,38 @@ function PopulationMap() {
   const { 
     filteredData, 
     selectedPlace,
+    selectedArea,
     selectedAgeGroup,
+    availableAreas,
     fetchData,
+    fetchAreas,
     selectPlace,
+    selectArea,
     getCongestionColor,
     isLoading,
     error
   } = usePopulationStore();
   
-  // 컴포넌트 마운트시 데이터 로드
+  // 컴포넌트 마운트시 데이터 및 지역 목록 로드
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchAreas();
+  }, [fetchData, fetchAreas]);
 
-  // 선택된 장소로 지도 중심 이동
+  // 선택된 장소나 지역으로 지도 중심 이동
   const mapCenter = selectedPlace 
     ? selectedPlace.coordinates 
-    : SEOUL_CENTER;
+    : selectedArea 
+      ? availableAreas.find(a => a.id === selectedArea)?.coordinates
+      : SEOUL_CENTER;
   
-  const mapZoom = selectedPlace ? 15 : DEFAULT_ZOOM;
+  const mapZoom = (selectedPlace || selectedArea) ? 15 : DEFAULT_ZOOM;
 
-  if (isLoading) {
+  if (isLoading && !filteredData) {
     return <div className="loading-container">데이터를 로딩 중입니다...</div>;
   }
 
-  if (error) {
+  if (error && !filteredData) {
     return <div className="error-container">{error}</div>;
   }
 
@@ -73,6 +80,27 @@ function PopulationMap() {
         
         <MapCenterUpdater center={mapCenter} zoom={mapZoom} />
         
+        {/* 모든 가용 지역 마커 표시 (작은 크기) */}
+        {availableAreas.length > 0 && availableAreas.map(area => (
+          <Circle
+            key={`area-${area.id}`}
+            center={area.coordinates}
+            radius={80}
+            pathOptions={{
+              fillColor: '#6b7280',
+              color: '#6b7280',
+              fillOpacity: 0.3,
+              weight: 1
+            }}
+            eventHandlers={{
+              click: () => selectArea(area.id)
+            }}
+          >
+            <Tooltip>{area.name}</Tooltip>
+          </Circle>
+        ))}
+        
+        {/* 필터링된, 더 자세한 인구 데이터가 있는 지역 표시 */}
         {filteredData && filteredData.map(place => {
           // 선택된 나이대 또는 혼잡도 기준 시각화
           let circleColor;
