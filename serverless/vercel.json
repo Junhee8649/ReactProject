@@ -4,6 +4,11 @@
       "src": "/api/population",
       "dest": "/api/population.js",
       "methods": ["GET"]
+    },
+    {
+      "src": "/api/areas",
+      "dest": "/api/areas.js",
+      "methods": ["GET"]
     }
   ]
 }
