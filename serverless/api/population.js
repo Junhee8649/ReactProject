@@ -150,7 +150,9 @@ export default async function handler(req, res) {
           '70s': parseFloat(place.PPLTN_RATE_70 || 0)
         },
         updatedAt: place.PPLTN_TIME,
-        hasForecast: place.FCST_YN === "Y"
+        hasForecast: place.FCST_YN === "Y",
+        // 예측 데이터 그대로 전달 (클라이언트에서 가공)
+        FCST_PPLTN: place.FCST_PPLTN || []
       }))
     };
     
