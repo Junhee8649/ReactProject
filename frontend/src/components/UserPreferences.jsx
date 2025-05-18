@@ -3,7 +3,12 @@ import React from 'react';
 import usePopulationStore from '../store/populationStore';
 
 const UserPreferences = () => {
-  const { userPreferences, updateUserPreference, toggleRecommendations } = usePopulationStore();
+  const { 
+    userPreferences, 
+    updateUserPreference, 
+    toggleRecommendations,
+    dataCollectionStatus 
+  } = usePopulationStore();
   
   return (
     <div className="user-preferences">
@@ -67,6 +72,11 @@ const UserPreferences = () => {
           <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"></path>
         </svg>
         내게 맞는 장소 추천받기
+        {dataCollectionStatus.loaded > 0 && dataCollectionStatus.loaded < dataCollectionStatus.total && (
+          <span className="recommendation-badge">
+            {Math.round((dataCollectionStatus.loaded / dataCollectionStatus.total) * 100)}% 데이터
+          </span>
+        )}
       </button>
     </div>
   );
