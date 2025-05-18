@@ -41,9 +41,21 @@ const usePopulationStore = create(
       searchResults: [],
       searchFeedback: '',
       
-      // 새로 추가: 예측 데이터 관련 상태
-      showForecast: true, // 예측 데이터 표시 여부
-      optimalVisitTime: null, // 최적 방문 시간
+      // 예측 데이터 관련 상태
+      showForecast: true,
+      optimalVisitTime: null,
+      
+      // 사용자 선호도 관련 상태 추가
+      userPreferences: {
+        preferQuiet: true,        // 조용한 곳 선호 여부
+        preferredAgeGroup: '20s', // 선호하는 나이대
+        avoidCrowds: true,        // 혼잡한 곳 피하기 여부
+      },
+      
+      recommendedPlaces: [],      // 추천된 장소 목록
+      showRecommendations: false, // 추천 화면 표시 여부
+      
+      // 기존 액션들...
       
       // 지역 데이터 로드 액션
       fetchAreas: async () => {
@@ -207,13 +219,6 @@ const usePopulationStore = create(
           const data = await response.json();
           console.log("Population data received:", data);
 
-          // 데이터 유효성 검사
-          if (data.places && data.places.length > 0) {
-            console.log("첫번째 장소 데이터:", data.places[0]);
-            console.log("예측 데이터 존재 여부:", data.places[0].hasForecast);
-            console.log("원본 예측 데이터:", data.places[0].FCST_PPLTN);
-          }
-
           set({ 
             populationData: data,
             filteredData: data.places, 
@@ -233,6 +238,10 @@ const usePopulationStore = create(
           if (selectedAgeGroup !== 'all') {
             get().filterByAgeGroup(selectedAgeGroup);
           }
+          
+          // 데이터가, 로드되면 추천 계산
+          get().calculateRecommendations();
+          
         } catch (error) {
           console.error('Error fetching population data:', error);
           set({ 
@@ -268,7 +277,6 @@ const usePopulationStore = create(
         set({ filteredData: filtered });
       },
       
-      // 장소 선택 (최적 방문 시간 계산 추가)
       selectPlace: (placeId) => {
         const { filteredData } = get();
         if (!filteredData) return;
@@ -279,7 +287,6 @@ const usePopulationStore = create(
         
         set({ selectedPlace });
         
-        // 선택된 장소에 예측 데이터가 있으면 최적 방문 시간 계산
         if (selectedPlace && selectedPlace.hasForecast) {
           get().calculateOptimalVisitTime(selectedPlace);
         } else {
@@ -287,7 +294,6 @@ const usePopulationStore = create(
         }
       },
       
-      // 최적 방문 시간 계산 (개선)
       calculateOptimalVisitTime: (place) => {
         console.log("calculateOptimalVisitTime 호출됨, 장소:", place.name);
         
@@ -366,28 +372,97 @@ const usePopulationStore = create(
         }
       },
       
-      // 혼잡도 색상 반환
       getCongestionColor: (congestionLevel) => {
         return congestionColors[congestionLevel] || '#666666'; // 기본 회색
       },
       
-      // 혼잡도 점수 반환
       getCongestionScore: (congestionLevel) => {
         return congestionScores[congestionLevel] || 3; // 기본값
       },
       
-      // 예측 차트 표시 여부 토글
       toggleForecast: () => {
         set(state => ({ showForecast: !state.showForecast }));
       },
       
-      // 데이터 초기화
       resetData: () => {
         set({
           selectedPlace: null,
           error: null,
           optimalVisitTime: null
         });
+      },
+      
+      // 사용자 선호도 관련 액션 추가
+      updateUserPreference: (key, value) => {
+        set(state => ({
+          userPreferences: {
+            ...state.userPreferences,
+            [key]: value
+          }
+        }));
+        
+        // 선호도가 변경되면 추천 재계산
+        get().calculateRecommendations();
+      },
+      
+      // 선호도 기반 장소 추천 계산 함수
+      calculateRecommendations: () => {
+        const { populationData, userPreferences } = get();
+        
+        if (!populationData || !populationData.places || populationData.places.length === 0) {
+          return set({ recommendedPlaces: [] });
+        }
+        
+        // 추천 알고리즘
+        const scored = populationData.places.map(place => {
+          // 기본 점수
+          let score = 50;
+          
+          // 1. 선호 나이대 비율에 따른 점수 (0-30점)
+          const ageGroupRate = place.ageGroups[userPreferences.preferredAgeGroup] || 0;
+          score += ageGroupRate * 1.5; // 비율이 높을수록 더 높은 점수
+          
+          // 2. 혼잡도에 따른 점수 (0-20점)
+          const congestionScores = {
+            '여유': userPreferences.preferQuiet ? 20 : 5,
+            '보통': userPreferences.preferQuiet ? 15 : 10,
+            '약간 붐빔': 10,
+            '붐빔': userPreferences.preferQuiet ? 5 : 15,
+            '매우 붐빔': userPreferences.preferQuiet ? 0 : 20
+          };
+          score += congestionScores[place.congestionLevel] || 10;
+          
+          // 3. 붐비는 곳 회피 설정에 따른 보정 (-10점)
+          if (userPreferences.avoidCrowds && 
+             (place.congestionLevel === '붐빔' || place.congestionLevel === '매우 붐빔')) {
+            score -= 10;
+          }
+          
+          return {
+            ...place,
+            recommendScore: score,
+            matchReason: getMatchReason(place, userPreferences)
+          };
+        });
+        
+        // 점수에 따라 정렬하고 상위 5개만 선택
+        const recommendations = scored
+          .sort((a, b) => b.recommendScore - a.recommendScore)
+          .slice(0, 5);
+        
+        set({ recommendedPlaces: recommendations });
+      },
+      
+      // 추천 화면 토글
+      toggleRecommendations: () => {
+        const { showRecommendations, recommendedPlaces } = get();
+        
+        // 추천 목록이 비어있으면 계산
+        if (!showRecommendations && recommendedPlaces.length === 0) {
+          get().calculateRecommendations();
+        }
+        
+        set(state => ({ showRecommendations: !state.showRecommendations }));
       }
     }),
     {
@@ -396,5 +471,29 @@ const usePopulationStore = create(
     }
   )
 );
+
+// 추천 이유 생성 헬퍼 함수
+function getMatchReason(place, preferences) {
+  const reasons = [];
+  
+  // 선호 나이대 비율이 높은 경우
+  const preferredAgeRate = place.ageGroups[preferences.preferredAgeGroup] || 0;
+  if (preferredAgeRate > 20) {
+    reasons.push(`${preferences.preferredAgeGroup} 인구 비율이 ${preferredAgeRate.toFixed(1)}%로 높음`);
+  }
+  
+  // 혼잡도 관련 이유
+  if (preferences.preferQuiet) {
+    if (place.congestionLevel === '여유' || place.congestionLevel === '보통') {
+      reasons.push(`혼잡도가 '${place.congestionLevel}'로 조용한 분위기`);
+    }
+  } else {
+    if (place.congestionLevel === '붐빔' || place.congestionLevel === '매우 붐빔') {
+      reasons.push(`혼잡도가 '${place.congestionLevel}'로 활기찬 분위기`);
+    }
+  }
+  
+  return reasons.length > 0 ? reasons : ['종합적인 점수가 높은 장소'];
+}
 
 export default usePopulationStore;
