@@ -2,13 +2,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// 혼잡도 레벨에 따른 색상 맵핑
+// 혼잡도 레벨에 따른 색상 맵핑 (개선된 색상)
 const congestionColors = {
-  '여유': '#34c759', // 초록
-  '보통': '#ffcc00', // 노랑
-  '약간 붐빔': '#ff9500', // 주황
-  '붐빔': '#ff3b30', // 빨강
-  '매우 붐빔': '#af2a2a'  // 진한 빨강
+  '여유': '#10b981', // 좀 더 눈에 띄는 녹색
+  '보통': '#f59e0b', // 좀 더 눈에 띄는 노랑/주황
+  '약간 붐빔': '#f97316', // 좀 더 눈에 띄는 주황
+  '붐빔': '#ef4444', // 좀 더 눈에 띄는 빨강
+  '매우 붐빔': '#b91c1c'  // 좀 더 눈에 띄는 진한 빨강
 };
 
 // 혼잡도 레벨에 따른 점수 맵핑 (최적 방문 시간 계산용)
@@ -47,7 +47,6 @@ const usePopulationStore = create(
       
       // 지역 데이터 로드 액션
       fetchAreas: async () => {
-        // 기존 코드 유지
         try {
           set({ isLoading: true });
           console.log("Fetching areas...");
@@ -74,7 +73,7 @@ const usePopulationStore = create(
         }
       },
       
-      // 검색 액션 - 기존 코드 유지
+      // 검색 액션
       searchAreas: (text) => {
         const { availableAreas } = get();
         set({ searchText: text });
@@ -122,8 +121,6 @@ const usePopulationStore = create(
         set({ searchResults: filtered });
       },
       
-      // 기존 함수들 유지...
-      
       setSearchFeedback: (message) => {
         set({ searchFeedback: message });
         if (message) {
@@ -155,7 +152,6 @@ const usePopulationStore = create(
       },
       
       fetchData: async (directAreaName = null, forceRefresh = false) => {
-        // 기존 코드 유지
         set({ isLoading: true, error: null });
         try {
           const { selectedArea } = get();
@@ -211,14 +207,13 @@ const usePopulationStore = create(
           const data = await response.json();
           console.log("Population data received:", data);
 
-          // 원본 데이터 구조 확인
+          // 데이터 유효성 검사
           if (data.places && data.places.length > 0) {
             console.log("첫번째 장소 데이터:", data.places[0]);
             console.log("예측 데이터 존재 여부:", data.places[0].hasForecast);
             console.log("원본 예측 데이터:", data.places[0].FCST_PPLTN);
           }
 
-          // FCST_PPLTN 데이터가 제대로 전달되도록 수정
           set({ 
             populationData: data,
             filteredData: data.places, 
@@ -251,7 +246,6 @@ const usePopulationStore = create(
         }
       },
       
-      // 기존 기능 유지
       filterByAgeGroup: (ageGroup) => {
         const { populationData } = get();
         
@@ -293,7 +287,7 @@ const usePopulationStore = create(
         }
       },
       
-      // 새로 추가: 예측 데이터 처리 및 최적 방문 시간 계산
+      // 최적 방문 시간 계산 (개선)
       calculateOptimalVisitTime: (place) => {
         console.log("calculateOptimalVisitTime 호출됨, 장소:", place.name);
         
@@ -327,6 +321,28 @@ const usePopulationStore = create(
         const now = new Date();
         console.log("현재 시간:", now);
         
+        // 개선: 현재 시간에서 가장 가까운 '여유' 또는 '보통' 시간대도 고려
+        let bestTimeInRange = null;
+        let minTimeDiff = Infinity;
+        
+        scoredForecast.forEach(forecast => {
+          const forecastTime = new Date(forecast.time);
+          if (forecastTime > now && forecast.score <= 2) { // '여유' 또는 '보통'인 경우
+            const timeDiff = forecastTime.getTime() - now.getTime();
+            if (timeDiff < minTimeDiff) {
+              minTimeDiff = timeDiff;
+              bestTimeInRange = forecast;
+            }
+          }
+        });
+        
+        // 가장 가까운 '여유/보통' 시간이 있으면 사용
+        if (bestTimeInRange) {
+          console.log("가장 가까운 여유/보통 시간:", bestTimeInRange);
+          set({ optimalVisitTime: bestTimeInRange });
+          return;
+        }
+        
         // 점수가 가장 낮은(덜 혼잡한) 시간 찾기
         const optimal = scoredForecast.reduce((best, current) => {
           // 현재 시간 이후의 예측만 고려
@@ -355,7 +371,7 @@ const usePopulationStore = create(
         return congestionColors[congestionLevel] || '#666666'; // 기본 회색
       },
       
-      // 혼잡도 점수 반환 (추가)
+      // 혼잡도 점수 반환
       getCongestionScore: (congestionLevel) => {
         return congestionScores[congestionLevel] || 3; // 기본값
       },
