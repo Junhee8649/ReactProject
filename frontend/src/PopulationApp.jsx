@@ -5,8 +5,10 @@ import AgeGroupFilter from './components/AgeGroupFilter';
 import AreaSearch from './components/AreaSearch';
 import AreaCategories from './components/AreaCategories';
 import PlaceDetail from './components/PlaceDetail';
-import UserPreferences from './components/UserPreferences'; // 새로 추가
-import RecommendedPlaces from './components/RecommendedPlaces'; // 새로 추가
+import UserPreferences from './components/UserPreferences';
+import RecommendedPlaces from './components/RecommendedPlaces';
+import DataCollectionStatus from './components/DataCollectionStatus';
+import LoadingSequence from './components/LoadingSequence';
 import usePopulationStore from './store/populationStore';
 import './PopulationApp.css';
 
@@ -19,24 +21,36 @@ function PopulationApp() {
     fetchAreas,
     selectArea,
     availableAreas,
-    error 
+    startDataCollection,
+    error,
+    isLoading
   } = usePopulationStore();
   
   // PlaceDetail 컴포넌트에 대한 ref 생성
   const placeDetailRef = useRef(null);
   
-  // 애플리케이션 마운트시 데이터 로드
+  // 앱 초기화 시 필요한 데이터 로드
   useEffect(() => {
-    fetchAreas(); // 지역 목록 가져오기
-    fetchData();
+    // 지역 목록 가져오기
+    fetchAreas();
     
     // 실시간 업데이트를 위한 인터벌 설정 (3분)
     const intervalId = setInterval(() => {
-      fetchData();
+      fetchData(null, true); // 현재 표시 중인 지역 데이터 새로고침
     }, 3 * 60 * 1000);
     
-    return () => clearInterval(intervalId);
-  }, [fetchData, fetchAreas]);
+    // 백그라운드 데이터 수집 시작 (초기 로딩 후)
+    const collectionTimeout = setTimeout(() => {
+      if (!isLoading) {
+        startDataCollection();
+      }
+    }, 5000);
+    
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(collectionTimeout);
+    };
+  }, [fetchData, fetchAreas, startDataCollection, isLoading]);
   
   // 선택된 지역 이름 가져오기
   const getSelectedAreaName = () => {
@@ -56,57 +70,64 @@ function PopulationApp() {
   }, [selectedPlace]);
   
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>서울시 실시간 인구 핫스팟</h1>
-        {lastUpdated && (
-          <p className="last-updated">
-            마지막 업데이트: {new Date(lastUpdated).toLocaleString()}
-          </p>
-        )}
-      </header>
+    <>
+      <LoadingSequence />
       
-      <main className="main-content">
-        <div className="control-panel">
-          <AreaSearch />
-          <AreaCategories />
-          <AgeGroupFilter />
-        </div>
+      <div className="app-container">
+        <header className="app-header">
+          <h1>서울시 실시간 인구 핫스팟</h1>
+          {lastUpdated && (
+            <p className="last-updated">
+              마지막 업데이트: {new Date(lastUpdated).toLocaleString()}
+            </p>
+          )}
+        </header>
         
-        {/* 사용자 선호도 컴포넌트 추가 */}
-        <UserPreferences />
-        
-        {selectedArea && (
-          <div className="selected-area-info">
-            선택된 지역: <strong>{getSelectedAreaName()}</strong>
-            <button 
-              className="clear-btn"
-              onClick={() => selectArea(null)}
-            >
-              초기화
-            </button>
+        <main className="main-content">
+          <div className="control-panel">
+            <AreaSearch />
+            <AreaCategories />
+            <AgeGroupFilter />
           </div>
-        )}
+          
+          {/* 데이터 수집 상태 표시 */}
+          <DataCollectionStatus />
+          
+          {/* 사용자 선호도 컴포넌트 */}
+          <UserPreferences />
+          
+          {selectedArea && (
+            <div className="selected-area-info">
+              선택된 지역: <strong>{getSelectedAreaName()}</strong>
+              <button 
+                className="clear-btn"
+                onClick={() => selectArea(null)}
+              >
+                초기화
+              </button>
+            </div>
+          )}
+          
+          <PopulationMap />
+          
+          {error && <div className="error-message">{error}</div>}
+          
+          {selectedPlace && (
+            <div ref={placeDetailRef}>
+              <PlaceDetail />
+            </div>
+          )}
+          
+          {/* 추천 장소 모달 컴포넌트 */}
+          <RecommendedPlaces />
+        </main>
         
-        <PopulationMap />
-        
-        {error && <div className="error-message">{error}</div>}
-        
-        {selectedPlace && (
-          <div ref={placeDetailRef}>
-            <PlaceDetail />
-          </div>
-        )}
-        
-        {/* 추천 장소 모달 컴포넌트 추가 */}
-        <RecommendedPlaces />
-      </main>
-      
-      <footer className="app-footer">
-        <p>© 2025 서울시 실시간 인구 핫스팟 | 서울 열린데이터 광장 API 활용</p>
-        <small>데이터 출처: 서울시 공공데이터</small>
-      </footer>
-    </div>
+        <footer className="app-footer">
+          <p>© 2025 서울시 실시간 인구 핫스팟 | 서울 열린데이터 광장 API 활용</p>
+          <small>데이터 출처: 서울시 공공데이터</small>
+        </footer>
+      </div>
+    </>
   );
 }
 
