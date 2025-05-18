@@ -853,3 +853,438 @@
     flex-direction: column;
   }
 }
+
+/* PopulationApp.css에 추가할 스타일 */
+
+/* 최적 방문 시간 영역 개선 스타일 */
+.optimal-visit-time {
+  background-color: white;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  margin: 1.5rem 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 헤더 영역 개선 */
+.optimal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+  padding-bottom: 0.75rem;
+}
+
+.optimal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* AI 추천 배지 */
+.recommendation-badge {
+  background-color: #4f46e5;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+}
+
+/* 시간 카드 스타일 개선 */
+.optimal-time-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.optimal-time {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border: 2px solid;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  min-width: 180px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.optimal-time:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.optimal-time-icon {
+  padding: 0.75rem;
+  background-color: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.optimal-time-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.optimal-time-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.2;
+}
+
+.optimal-congestion {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+/* 추천 이유 스타일 */
+.optimal-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+}
+
+.reason-icon {
+  padding: 0.5rem;
+  background-color: #dcfce7;
+  border-radius: 50%;
+  display: flex;
+  color: #059669;
+}
+
+.reason-text p {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
+  color: #4b5563;
+}
+
+.reason-text small {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* 펄스 애니메이션 */
+.pulse-card {
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* 강조 효과 - 방문 추천 시간 섹션 앞뒤로 추가할 수 있는 장식 */
+.optimal-visit-time::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(to bottom, #3b82f6, #4f46e5);
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+/* 예측 차트 컨테이너 개선 */
+.forecast-chart-container {
+  background-color: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.forecast-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.forecast-chart-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+/* 시간 마커 범례 */
+.time-markers {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.time-marker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.marker.optimal {
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+}
+
+.marker-label {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+/* 선택된 시간 정보 개선 */
+.selected-time-info {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border-left: 4px solid #6366f1;
+  animation: slide-in 0.3s ease-in-out;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selected-time-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.selected-time-stats {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  padding: 0.25rem 0.75rem;
+  background-color: #e5e7eb;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  color: #1f2937;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 차트에 추천 시간 강조 마커 스타일 */
+.recommended-time-marker {
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+  animation: dash 2s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+/* 혼잡도 막대 차트 */
+.congestion-bar-chart {
+  background-color: #f9fafb;
+  border-radius: 8px;
+  padding: 0.75rem 0.5rem 0 0.5rem;
+  height: 80px;
+  margin-top: 1rem;
+}
+
+/* 범례 개선 */
+.congestion-legend {
+  display: flex;
+  align-items: center;
+  margin-top: 1rem;
+  background-color: #f9fafb;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.legend-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  margin-right: 1.5rem;
+  white-space: nowrap;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.legend-label {
+  font-size: 0.85rem;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+/* 예측 없음 메시지 */
+.no-forecast {
+  text-align: center;
+  padding: 2rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  color: #6b7280;
+  margin-top: 1rem;
+}
+
+/* 모바일 화면 대응 */
+@media (max-width: 640px) {
+  .optimal-time {
+    padding: 0.75rem 1rem;
+  }
+  
+  .optimal-time-value {
+    font-size: 1.5rem;
+  }
+  
+  .optimal-reason {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .forecast-chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .time-markers {
+    margin-top: 0.5rem;
+  }
+  
+  .congestion-legend {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .legend-title {
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .legend-items {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.forecast-legend {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.optimal-marker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.marker-line {
+  width: 20px;
+  height: 3px;
+  border-radius: 1px;
+  position: relative;
+}
+
+/* 점선 애니메이션 효과 */
+.marker-line::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, transparent 50%, 
+    currentColor 50%, currentColor 100%);
+  background-size: 8px 1px;
+  animation: move 1s linear infinite;
+}
+
+.marker-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.marker-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.marker-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f59e0b;
+}

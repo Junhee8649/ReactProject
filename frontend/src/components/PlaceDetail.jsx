@@ -1,4 +1,4 @@
-// frontend/src/components/PlaceDetail.jsx
+// frontend/src/components/PlaceDetail.jsx - 개선된 버전
 import React, { useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -101,6 +101,18 @@ const PlaceDetail = () => {
   // 혼잡도에 따른 배경 그라데이션 ID 생성
   const getCongestionGradientId = () => `congestion-gradient-${selectedPlace.id}`;
   
+  // 혼잡도에 따른 배경색 밝기 조정
+  const getBackgroundOpacity = (level) => {
+    switch(level) {
+      case '여유': return '0.1';
+      case '보통': return '0.15';
+      case '약간 붐빔': return '0.2';
+      case '붐빔': return '0.25';
+      case '매우 붐빔': return '0.3';
+      default: return '0.15';
+    }
+  };
+  
   return (
     <div className="place-detail">
       <div className="place-header">
@@ -149,17 +161,27 @@ const PlaceDetail = () => {
       {/* 최적 방문 시간 추천 (UI 개선) */}
       {optimalTimeFormatted && (
         <div className="optimal-visit-time">
-          <h3>방문 추천 시간</h3>
+          <div className="optimal-header">
+            <h3>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              방문 추천 시간
+            </h3>
+            <div className="recommendation-badge">AI 추천</div>
+          </div>
+          
           <div className="optimal-time-container">
             <div 
-              className="optimal-time" 
+              className="optimal-time pulse-card"
               style={{ 
                 borderColor: optimalTimeFormatted.color,
-                backgroundColor: `${optimalTimeFormatted.color}15` // 투명도 낮은 배경색
+                backgroundColor: `${optimalTimeFormatted.color}${getBackgroundOpacity(optimalTimeFormatted.congestionLevel)}`
               }}
             >
               <div className="optimal-time-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={optimalTimeFormatted.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
                   <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
@@ -174,7 +196,19 @@ const PlaceDetail = () => {
                 </span>
               </div>
             </div>
-            <small>이 시간에 가장 붐비지 않을 것으로 예상됩니다</small>
+            
+            <div className="optimal-reason">
+              <div className="reason-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <div className="reason-text">
+                <p>이 시간에 가장 붐비지 않을 것으로 예상됩니다</p>
+                <small>향후 6시간 내 최적 방문 시간</small>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -198,12 +232,30 @@ const PlaceDetail = () => {
           
           {showForecast && futureForecast.length > 0 && (
             <div className="forecast-chart-container">
+              {/* 추천 시간 범례를 추가한 차트 헤더 */}
+              <div className="forecast-chart-header">
+                <h3>시간대별 예상 인구</h3>
+                {optimalTimeFormatted && (
+                  <div className="optimal-time-legend">
+                    <div className="optimal-line-sample" 
+                         style={{ backgroundColor: optimalTimeFormatted.color }}></div>
+                    <div className="optimal-legend-text">
+                      <span className="legend-label">추천 시간 : </span>
+                      <span className="legend-value" 
+                            style={{ color: optimalTimeFormatted.color }}>
+                        {optimalTimeFormatted.time} ({optimalTimeFormatted.congestionLevel})
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               {/* 선택된 시간 정보 표시 */}
               {selectedTimeData && (
                 <div className="selected-time-info">
                   <h4>{selectedTimeData.time} 예상 상황</h4>
                   <div className="selected-time-stats">
-                    <div className="stat-pill" style={{ backgroundColor: selectedTimeData.color }}>
+                    <div className="stat-pill" style={{ backgroundColor: selectedTimeData.color, color: 'white' }}>
                       {selectedTimeData.congestionLevel}
                     </div>
                     <div className="stat-pill">
@@ -227,22 +279,25 @@ const PlaceDetail = () => {
                     <defs>
                       {/* 혼잡도에 따른 그라데이션 정의 */}
                       <linearGradient id={getCongestionGradientId()} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0.2}/>
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.2}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                       dataKey="time" 
-                      tick={{ fill: '#4b5563' }}
+                      tick={{ fill: '#4b5563', fontSize: 12 }}
+                      axisLine={{ stroke: '#d1d5db' }}
+                      tickLine={{ stroke: '#d1d5db' }}
                     />
                     <YAxis 
                       label={{ 
                         value: '예상 인구 (명)', 
                         angle: -90, 
                         position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: '#4b5563' }
+                        style: { textAnchor: 'middle', fill: '#4b5563', fontSize: 12 }
                       }}
+                      tick={{ fill: '#4b5563', fontSize: 12 }}
                     />
                     <Tooltip 
                       formatter={(value, name) => {
@@ -251,27 +306,39 @@ const PlaceDetail = () => {
                         }
                         return [value, name];
                       }}
-                      labelFormatter={(time) => `${time} 예상`}
+                      labelFormatter={(time) => {
+                        // 툴팁 헤더 - 시간과 혼잡도 함께 표시
+                        const item = futureForecast.find(d => d.time === time);
+                        return (
+                          <div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>{time}</div>
+                            <div style={{ 
+                              color: item ? item.color : '#666',
+                              fontSize: '12px',
+                              fontWeight: 'bold'
+                            }}>
+                              {item ? item.congestionLevel : ''}
+                            </div>
+                          </div>
+                        );
+                      }}
                       contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                         border: '1px solid #e5e7eb',
-                        borderRadius: '4px'
+                        borderRadius: '6px',
+                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+                        padding: '8px 12px'
                       }}
                     />
                     
-                    {/* 최적 방문 시간 표시선 */}
+                    {/* 최적 방문 시간 표시선 - 텍스트 레이블 제거 */}
                     {optimalTimeFormatted && (
                       <ReferenceLine 
                         x={optimalTimeFormatted.time} 
                         stroke={optimalTimeFormatted.color}
-                        strokeWidth={2}
-                        strokeDasharray="3 3"
-                        label={{ 
-                          value: '추천', 
-                          position: 'top',
-                          fill: optimalTimeFormatted.color,
-                          fontSize: 12
-                        }}
+                        strokeWidth={2.5}
+                        className="recommended-time-marker"
+                        // 레이블 제거함
                       />
                     )}
                     
@@ -280,10 +347,21 @@ const PlaceDetail = () => {
                       type="monotone" 
                       dataKey="avgPeople"
                       name="예상 인구"
-                      stroke="#8884d8" 
+                      stroke="#3b82f6" 
                       fill={`url(#${getCongestionGradientId()})`} 
                       activeDot={{ 
-                        r: 8,
+                        r: (dot) => {
+                          if (optimalTimeFormatted && dot.payload.time === optimalTimeFormatted.time) {
+                            return 10; // 추천 시간 점 크기 증가
+                          }
+                          return 8;
+                        },
+                        fill: (dot) => {
+                          if (optimalTimeFormatted && dot.payload.time === optimalTimeFormatted.time) {
+                            return optimalTimeFormatted.color; // 추천 시간 점 색상 변경
+                          }
+                          return '#3b82f6';
+                        },
                         stroke: '#fff',
                         strokeWidth: 2,
                         onClick: (props) => {
@@ -298,29 +376,16 @@ const PlaceDetail = () => {
                         x={selectedTimeData?.time} 
                         stroke="#000"
                         strokeWidth={1}
+                        strokeDasharray="3 3"
                       />
                     )}
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
               
-              {/* 혼잡도 색상 범례 */}
-              <div className="congestion-legend">
-                {Array.from(new Set(futureForecast.map(item => item.congestionLevel))).map(level => (
-                  <div key={level} className="legend-item">
-                    <span 
-                      className="legend-color" 
-                      style={{ backgroundColor: getCongestionColor(level) }}
-                    ></span>
-                    <span className="legend-label">{level}</span>
-                  </div>
-                ))}
-              </div>
-              
-              {/* 시간별 혼잡도 바 차트 (추가) */}
+              {/* 시간별 혼잡도 바 차트 (추가) - 더 명확한 혼잡도 시각화 */}
               <div className="congestion-bar-chart" style={{ height: 80, marginTop: 20 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  {/* 시간별 혼잡도 바 차트 (수정됨) */}
                   <BarChart 
                     data={futureForecast}
                     margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
@@ -339,17 +404,22 @@ const PlaceDetail = () => {
                     />
                     <Tooltip 
                       formatter={(value, name) => {
-                        return [value, '혼잡도 레벨'];
+                        if (name === 'congestionIndex') {
+                          const levels = ['여유', '보통', '약간 붐빔', '붐빔', '매우 붐빔'];
+                          return [levels[value-1], '혼잡도'];
+                        }
+                        return [value, name];
                       }}
-                      labelFormatter={(time) => `${time}`}
                     />
-                    {/* 수정: fill 속성을 한 번만 사용 */}
+                    {/* 혼잡도 레벨을 숫자 인덱스로 변환하여 바 높이 조절 */}
                     <Bar 
-                      dataKey="congestionLevel" 
-                      name="혼잡도"
+                      dataKey={(data) => {
+                        const levels = ['여유', '보통', '약간 붐빔', '붐빔', '매우 붐빔'];
+                        return levels.indexOf(data.congestionLevel) + 1;
+                      }}
+                      name="congestionIndex"
                       radius={[4, 4, 0, 0]}
-                      // 동적으로 각 바의 색상 지정
-                      fill={(data) => data.color}
+                      fill={(data) => data.color} // 동적 색상 지정
                     />
                     
                     {/* 최적 시간 표시 */}
@@ -358,10 +428,27 @@ const PlaceDetail = () => {
                         x={optimalTimeFormatted.time} 
                         stroke={optimalTimeFormatted.color}
                         strokeWidth={2}
+                        className="recommended-time-marker"
                       />
                     )}
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+              
+              {/* 혼잡도 색상 범례 */}
+              <div className="congestion-legend">
+                <div className="legend-title">혼잡도 레벨</div>
+                <div className="legend-items">
+                  {['여유', '보통', '약간 붐빔', '붐빔', '매우 붐빔'].map(level => (
+                    <div key={level} className="legend-item">
+                      <span 
+                        className="legend-color" 
+                        style={{ backgroundColor: getCongestionColor(level) }}
+                      ></span>
+                      <span className="legend-label">{level}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
