@@ -83,7 +83,7 @@ const AreaCircle = React.memo(({ area, onSelectArea, isSelected }) => {
   );
 });
 
-// 인구 데이터 원 컴포넌트 (단순화)
+// 인구 데이터 원 컴포넌트 (개선)
 const PopulationCircle = React.memo(({ 
   place, 
   selectedPlace, 
@@ -99,23 +99,34 @@ const PopulationCircle = React.memo(({
   // 선택된 장소는 표시하지 않음 (마커로 대체)
   if (isSelected) return null;
   
-  // 원 스타일 계산
+  // 원 스타일 계산 (개선: 더 명확한 시각화)
   let circleColor;
   let circleRadius;
+  let fillOpacity = 0.6;
   
   if (selectedAgeGroup === 'all') {
     circleColor = getCongestionColor(place.congestionLevel);
-    circleRadius = 200; 
+    circleRadius = 200;
+    
+    // 혼잡도에 따라 투명도 조정
+    if (place.congestionLevel === '매우 붐빔') {
+      fillOpacity = 0.8;
+    } else if (place.congestionLevel === '붐빔') {
+      fillOpacity = 0.7;
+    }
   } else {
     const percentage = place.ageGroups[selectedAgeGroup];
-    circleColor = '#3b82f6';
-    circleRadius = 100 + (percentage * 8); 
+    // 비율에 따라 색상 그라데이션 (더 명확한 시각화)
+    circleColor = percentage > 30 ? '#3b82f6' :
+                 percentage > 20 ? '#60a5fa' :
+                 percentage > 10 ? '#93c5fd' : '#bfdbfe';
+    circleRadius = 100 + (percentage * 8);
   }
   
   const circleStyle = {
     fillColor: circleColor,
     color: circleColor,
-    fillOpacity: 0.6,
+    fillOpacity: fillOpacity,
     weight: 1
   };
   
@@ -135,7 +146,7 @@ const PopulationCircle = React.memo(({
           <p>혼잡도: <span style={{ color: getCongestionColor(place.congestionLevel) }}>{place.congestionLevel}</span></p>
           {selectedAgeGroup !== 'all' && (
             <p>
-              {selectedAgeGroup} 비율: {place.ageGroups[selectedAgeGroup].toFixed(1)}%
+              {selectedAgeGroup} 비율: <strong>{place.ageGroups[selectedAgeGroup].toFixed(1)}%</strong>
             </p>
           )}
         </div>
@@ -148,16 +159,27 @@ const PopulationCircle = React.memo(({
 const SelectedPlaceView = React.memo(({ place, selectedAgeGroup, getCongestionColor }) => {
   if (!place || !isValidCoordinate(place.coordinates)) return null;
 
-  // 원 스타일 계산
+  // 원 스타일 계산 (개선: 더 명확한 시각화)
   let circleColor;
   let circleRadius;
+  let fillOpacity = 0.4;
   
   if (selectedAgeGroup === 'all') {
     circleColor = getCongestionColor(place.congestionLevel);
     circleRadius = 200; 
+    
+    // 혼잡도에 따라 투명도 조정
+    if (place.congestionLevel === '매우 붐빔') {
+      fillOpacity = 0.6;
+    } else if (place.congestionLevel === '붐빔') {
+      fillOpacity = 0.5;
+    }
   } else {
     const percentage = place.ageGroups[selectedAgeGroup];
-    circleColor = '#3b82f6';
+    // 비율에 따라 색상 그라데이션
+    circleColor = percentage > 30 ? '#3b82f6' :
+                percentage > 20 ? '#60a5fa' :
+                percentage > 10 ? '#93c5fd' : '#bfdbfe';
     circleRadius = 100 + (percentage * 8); 
   }
 
@@ -165,7 +187,7 @@ const SelectedPlaceView = React.memo(({ place, selectedAgeGroup, getCongestionCo
   const circleStyle = {
     fillColor: circleColor,
     color: '#000',
-    fillOpacity: 0.4,
+    fillOpacity: fillOpacity,
     weight: 2
   };
 
@@ -183,11 +205,12 @@ const SelectedPlaceView = React.memo(({ place, selectedAgeGroup, getCongestionCo
 
   return (
     <>
-      {/* 선택된 장소의 원 */}
+      {/* 선택된 장소의 원 - 펄스 애니메이션 추가 */}
       <Circle
         center={place.coordinates}
         radius={circleRadius}
         pathOptions={circleStyle}
+        className="pulse-circle"
       />
       
       {/* 선택된 장소의 마커 */}
@@ -198,6 +221,9 @@ const SelectedPlaceView = React.memo(({ place, selectedAgeGroup, getCongestionCo
       >
         <Tooltip permanent direction="top" offset={[0, -20]} className="selected-place-tooltip">
           {place.name}
+          <span className="tooltip-congestion" style={{ color: getCongestionColor(place.congestionLevel) }}>
+            {' - '}{place.congestionLevel}
+          </span>
         </Tooltip>
       </Marker>
     </>
@@ -258,12 +284,23 @@ function PopulationMap() {
 
   // 로딩 상태 처리
   if (isLoading && !filteredData) {
-    return <div className="loading-container">데이터를 로딩 중입니다...</div>;
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>데이터를 로딩 중입니다...</p>
+      </div>
+    );
   }
 
   // 에러 상태 처리
   if (error && !filteredData) {
-    return <div className="error-container">{error}</div>;
+    return (
+      <div className="error-container">
+        <div className="error-icon">⚠️</div>
+        <p>{error}</p>
+        <button onClick={() => fetchData()} className="retry-button">다시 시도</button>
+      </div>
+    );
   }
 
   return (
@@ -311,8 +348,30 @@ function PopulationMap() {
           />
         )}
       </MapContainer>
+      
+      {/* 지도 범례 */}
+      <div className="map-legend">
+        <div className="legend-title">혼잡도 범례</div>
+        <div className="legend-items">
+          {Object.entries(congestionColors).map(([level, color]) => (
+            <div key={level} className="legend-item">
+              <span className="legend-color" style={{ backgroundColor: color }}></span>
+              <span className="legend-label">{level}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
+
+// 혼잡도 레벨에 따른 색상 맵핑 (범례용)
+const congestionColors = {
+  '여유': '#10b981', // 녹색
+  '보통': '#f59e0b', // 노랑/주황
+  '약간 붐빔': '#f97316', // 주황
+  '붐빔': '#ef4444', // 빨강
+  '매우 붐빔': '#b91c1c'  // 진한 빨강
+};
 
 export default React.memo(PopulationMap);
