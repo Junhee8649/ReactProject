@@ -1,11 +1,11 @@
 // frontend/src/components/PopulationMap.jsx
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Circle, Tooltip, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import usePopulationStore from '../store/populationStore';
 
-// Leaflet 아이콘 설정 (코드 유지)
+// Leaflet 아이콘 설정
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -17,7 +17,7 @@ L.Icon.Default.mergeOptions({
 const SEOUL_CENTER = [37.5665, 126.9780];
 const DEFAULT_ZOOM = 12;
 
-// 유틸리티 함수: 좌표 유효성 검사 (반복 코드 제거)
+// 유틸리티 함수: 좌표 유효성 검사
 const isValidCoordinate = (coord) => {
   return Array.isArray(coord) && 
          coord.length === 2 && 
@@ -30,7 +30,7 @@ const isValidCoordinate = (coord) => {
          coord[1] >= 126.8 && coord[1] <= 127.2;
 };
 
-// 지도 센터 변경 컴포넌트 (최적화)
+// 지도 센터 변경 컴포넌트
 const MapCenterUpdater = React.memo(({ center, zoom }) => {
   const map = useMap();
   
@@ -51,21 +51,29 @@ const MapCenterUpdater = React.memo(({ center, zoom }) => {
   return null;
 });
 
-// 지역 원 컴포넌트 (분리하여 관리)
-const AreaCircle = React.memo(({ area, onSelectArea }) => {
+// 지역 원 컴포넌트
+const AreaCircle = React.memo(({ area, onSelectArea, isSelected }) => {
   if (!isValidCoordinate(area.coordinates)) return null;
+  
+  // 선택된 지역에는 다른 스타일 적용
+  const circleStyle = isSelected ? {
+    fillColor: '#6b7280',
+    color: '#374151',
+    fillOpacity: 0.2,
+    weight: 2
+  } : {
+    fillColor: '#6b7280',
+    color: '#6b7280',
+    fillOpacity: 0.3,
+    weight: 1
+  };
   
   return (
     <Circle
       key={`area-${area.id}`}
       center={area.coordinates}
       radius={80}
-      pathOptions={{
-        fillColor: '#6b7280',
-        color: '#6b7280',
-        fillOpacity: 0.3,
-        weight: 1
-      }}
+      pathOptions={circleStyle}
       eventHandlers={{
         click: () => onSelectArea(area.id)
       }}
@@ -75,7 +83,7 @@ const AreaCircle = React.memo(({ area, onSelectArea }) => {
   );
 });
 
-// 인구 데이터 원 컴포넌트 (분리하여 관리)
+// 인구 데이터 원 컴포넌트 (단순화)
 const PopulationCircle = React.memo(({ 
   place, 
   selectedPlace, 
@@ -84,6 +92,12 @@ const PopulationCircle = React.memo(({
   onSelectPlace 
 }) => {
   if (!isValidCoordinate(place.coordinates)) return null;
+  
+  // 선택된 장소인지 확인
+  const isSelected = selectedPlace?.id === place.id;
+  
+  // 선택된 장소는 표시하지 않음 (마커로 대체)
+  if (isSelected) return null;
   
   // 원 스타일 계산
   let circleColor;
@@ -98,17 +112,19 @@ const PopulationCircle = React.memo(({
     circleRadius = 100 + (percentage * 8); 
   }
   
+  const circleStyle = {
+    fillColor: circleColor,
+    color: circleColor,
+    fillOpacity: 0.6,
+    weight: 1
+  };
+  
   return (
     <Circle
       key={place.id}
       center={place.coordinates}
       radius={circleRadius}
-      pathOptions={{
-        fillColor: circleColor,
-        color: selectedPlace?.id === place.id ? '#000' : circleColor,
-        fillOpacity: 0.6,
-        weight: selectedPlace?.id === place.id ? 3 : 1
-      }}
+      pathOptions={circleStyle}
       eventHandlers={{
         click: () => onSelectPlace(place.id)
       }}
@@ -128,9 +144,69 @@ const PopulationCircle = React.memo(({
   );
 });
 
+// 선택된 장소 컴포넌트 (마커와 원 통합)
+const SelectedPlaceView = React.memo(({ place, selectedAgeGroup, getCongestionColor }) => {
+  if (!place || !isValidCoordinate(place.coordinates)) return null;
+
+  // 원 스타일 계산
+  let circleColor;
+  let circleRadius;
+  
+  if (selectedAgeGroup === 'all') {
+    circleColor = getCongestionColor(place.congestionLevel);
+    circleRadius = 200; 
+  } else {
+    const percentage = place.ageGroups[selectedAgeGroup];
+    circleColor = '#3b82f6';
+    circleRadius = 100 + (percentage * 8); 
+  }
+
+  // 선택된 장소의 원 스타일
+  const circleStyle = {
+    fillColor: circleColor,
+    color: '#000',
+    fillOpacity: 0.4,
+    weight: 2
+  };
+
+  // 눈에 더 잘 띄는 커스텀 마커 아이콘
+  const markerIcon = new L.Icon({
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+    className: 'selected-marker-icon'
+  });
+
+  return (
+    <>
+      {/* 선택된 장소의 원 */}
+      <Circle
+        center={place.coordinates}
+        radius={circleRadius}
+        pathOptions={circleStyle}
+      />
+      
+      {/* 선택된 장소의 마커 */}
+      <Marker 
+        position={place.coordinates}
+        icon={markerIcon}
+        zIndexOffset={1000}
+      >
+        <Tooltip permanent direction="top" offset={[0, -20]} className="selected-place-tooltip">
+          {place.name}
+        </Tooltip>
+      </Marker>
+    </>
+  );
+});
+
 // 메인 지도 컴포넌트
 function PopulationMap() {
-  // 상태 선택적 구독 - 개별 구독으로 최적화
+  // 상태 선택적 구독
   const filteredData = usePopulationStore(state => state.filteredData);
   const selectedPlace = usePopulationStore(state => state.selectedPlace);
   const selectedArea = usePopulationStore(state => state.selectedArea);
@@ -139,16 +215,21 @@ function PopulationMap() {
   const isLoading = usePopulationStore(state => state.isLoading);
   const error = usePopulationStore(state => state.error);
   
-  // 액션 함수들 - useCallback으로 메모이제이션
+  // 액션 함수들
   const selectPlace = usePopulationStore(state => state.selectPlace);
   const selectArea = usePopulationStore(state => state.selectArea);
   const getCongestionColor = usePopulationStore(state => state.getCongestionColor);
   const fetchData = usePopulationStore(state => state.fetchData);
   const fetchAreas = usePopulationStore(state => state.fetchAreas);
   
-  // 컴포넌트 마운트시 데이터 로드 (한 번만)
+  // 선택된 지역 객체 가져오기
+  const selectedAreaObj = useMemo(() => {
+    if (!selectedArea || !availableAreas.length) return null;
+    return availableAreas.find(a => a.id === selectedArea);
+  }, [selectedArea, availableAreas]);
+
+  // 컴포넌트 마운트시 데이터 로드
   useEffect(() => {
-    // 이미 데이터가 있는지 확인
     if (!filteredData) {
       fetchData();
     }
@@ -157,26 +238,23 @@ function PopulationMap() {
     }
   }, [fetchData, fetchAreas, filteredData, availableAreas.length]);
 
-  // 지도 중심 계산 (메모이제이션)
+  // 지도 중심 계산
   const mapCenter = useMemo(() => {
     if (selectedPlace && isValidCoordinate(selectedPlace.coordinates)) {
       return selectedPlace.coordinates;
     }
     
-    if (selectedArea) {
-      const areaObj = availableAreas.find(a => a.id === selectedArea);
-      if (areaObj && isValidCoordinate(areaObj.coordinates)) {
-        return areaObj.coordinates;
-      }
+    if (selectedAreaObj && isValidCoordinate(selectedAreaObj.coordinates)) {
+      return selectedAreaObj.coordinates;
     }
     
     return SEOUL_CENTER;
-  }, [selectedPlace, selectedArea, availableAreas]);
+  }, [selectedPlace, selectedAreaObj]);
 
-  // 줌 레벨 계산 (메모이제이션)
+  // 줌 레벨 계산
   const mapZoom = useMemo(() => {
-    return (selectedPlace || selectedArea) ? 15 : DEFAULT_ZOOM;
-  }, [selectedPlace, selectedArea]);
+    return (selectedPlace || selectedAreaObj) ? 15 : DEFAULT_ZOOM;
+  }, [selectedPlace, selectedAreaObj]);
 
   // 로딩 상태 처리
   if (isLoading && !filteredData) {
@@ -207,11 +285,12 @@ function PopulationMap() {
           <AreaCircle 
             key={area.id} 
             area={area} 
-            onSelectArea={selectArea} 
+            onSelectArea={selectArea}
+            isSelected={area.id === selectedArea}
           />
         ))}
         
-        {/* 인구 데이터 원 */}
+        {/* 인구 데이터 원 (선택되지 않은 장소만) */}
         {filteredData && filteredData.map(place => (
           <PopulationCircle
             key={place.id}
@@ -223,20 +302,12 @@ function PopulationMap() {
           />
         ))}
         
-        {/* 선택된 장소 마커 */}
-        {selectedPlace && isValidCoordinate(selectedPlace.coordinates) && (
-          <Marker 
-            position={selectedPlace.coordinates}
-            icon={new L.Icon({
-              iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-              iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34],
-              shadowSize: [41, 41],
-              className: 'custom-marker-icon'
-            })}
+        {/* 선택된 장소 표시 (원과 마커 통합) */}
+        {selectedPlace && (
+          <SelectedPlaceView 
+            place={selectedPlace}
+            selectedAgeGroup={selectedAgeGroup}
+            getCongestionColor={getCongestionColor}
           />
         )}
       </MapContainer>
