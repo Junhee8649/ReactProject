@@ -11,29 +11,43 @@ const congestionColors = {
   '매우 붐빔': '#af2a2a'  // 진한 빨강
 };
 
+// 혼잡도 레벨에 따른 점수 맵핑 (최적 방문 시간 계산용)
+const congestionScores = {
+  '여유': 1,
+  '보통': 2,
+  '약간 붐빔': 3,
+  '붐빔': 4,
+  '매우 붐빔': 5
+};
+
 // 인구 데이터 스토어
 const usePopulationStore = create(
   persist(
     (set, get) => ({
-      // 상태
+      // 기존 상태
       populationData: null,
       filteredData: null,
-      selectedAgeGroup: 'all', // 'all', '10s', '20s', '30s', '40s', '50s', '60s', '70s'
+      selectedAgeGroup: 'all',
       selectedPlace: null,
       isLoading: false,
       error: null,
       lastUpdated: null,
       
       // 검색 관련 상태
-      availableAreas: [], // 가용 지역 목록
-      areaCategories: [], // 지역 카테고리
-      selectedArea: null, // 선택된 지역
-      searchText: '', // 검색어
-      searchResults: [], // 검색 결과
-      searchFeedback: '', // 검색 피드백 메시지
+      availableAreas: [],
+      areaCategories: [],
+      selectedArea: null,
+      searchText: '',
+      searchResults: [],
+      searchFeedback: '',
+      
+      // 새로 추가: 예측 데이터 관련 상태
+      showForecast: true, // 예측 데이터 표시 여부
+      optimalVisitTime: null, // 최적 방문 시간
       
       // 지역 데이터 로드 액션
       fetchAreas: async () => {
+        // 기존 코드 유지
         try {
           set({ isLoading: true });
           console.log("Fetching areas...");
@@ -60,7 +74,7 @@ const usePopulationStore = create(
         }
       },
       
-      // 검색 액션 - 개선된 스마트 검색
+      // 검색 액션 - 기존 코드 유지
       searchAreas: (text) => {
         const { availableAreas } = get();
         set({ searchText: text });
@@ -103,26 +117,25 @@ const usePopulationStore = create(
         const filtered = scoredResults
           .filter(item => item.score > 0)
           .sort((a, b) => b.score - a.score)
-          .slice(0, 7); // 상위 7개 결과만
+          .slice(0, 7);
         
         set({ searchResults: filtered });
       },
       
-      // 검색 피드백 설정
+      // 기존 함수들 유지...
+      
       setSearchFeedback: (message) => {
         set({ searchFeedback: message });
         if (message) {
           setTimeout(() => {
             set({ searchFeedback: '' });
-          }, 3000); // 3초 후 메시지 사라짐
+          }, 3000);
         }
       },
       
-      // 지역 선택 액션
       selectArea: (areaId) => {
         const { availableAreas, selectedArea } = get();
         
-        // 같은 지역 재선택 시 강제 데이터 갱신을 위한 처리
         const isReselectingSameArea = selectedArea === areaId && areaId !== null;
         
         const selectedAreaObj = areaId ? 
@@ -132,50 +145,42 @@ const usePopulationStore = create(
           selectedArea: selectedAreaObj ? selectedAreaObj.id : null,
           searchText: '',
           searchResults: [],
-          selectedPlace: null // 지역 변경 시 선택된 장소 초기화
+          selectedPlace: null,
+          optimalVisitTime: null // 지역 변경 시 최적 방문 시간 초기화
         });
         
-        // 선택된 지역에 따라 데이터 다시 가져오기
         if (selectedAreaObj || isReselectingSameArea) {
-          // 강제 갱신 플래그 추가
           get().fetchData(null, isReselectingSameArea);
         }
       },
       
-      // 인구 데이터 가져오기 액션 (직접 지역명 입력 지원)
       fetchData: async (directAreaName = null, forceRefresh = false) => {
+        // 기존 코드 유지
         set({ isLoading: true, error: null });
         try {
           const { selectedArea } = get();
           
-          // 직접 입력한 지역명이 있거나 선택된 지역이 있는 경우
           let area = directAreaName || (selectedArea ? selectedArea : null);
           
-          // 대체 지역명 처리
-          if (area) {
-            // 특정 지역명이 API에서 처리되지 않는 경우 매핑
-            const fallbackMap = {
-              '동대문 시장': '동대문 관광특구',
-              '남대문 시장': '남대문시장',
-              '광장 시장': '광장(전통)시장',
-              '홍대입구역': '홍대입구역(2호선)',
-              '홍대입구': '홍대입구역(2호선)',
-              '홍대역': '홍대입구역(2호선)',
-            };
-            
-            if (fallbackMap[area]) {
-              console.log(`Using fallback mapping: ${area} -> ${fallbackMap[area]}`);
-              area = fallbackMap[area];
-            }
+          const fallbackMap = {
+            '동대문 시장': '동대문 관광특구',
+            '남대문 시장': '남대문시장',
+            '광장 시장': '광장(전통)시장',
+            '홍대입구역': '홍대입구역(2호선)',
+            '홍대입구': '홍대입구역(2호선)',
+            '홍대역': '홍대입구역(2호선)',
+          };
+          
+          if (area && fallbackMap[area]) {
+            console.log(`Using fallback mapping: ${area} -> ${fallbackMap[area]}`);
+            area = fallbackMap[area];
           }
           
-          // 선택된 지역에 따라 URL 구성
           let url = '/api/population';
           if (area) {
             url = `${url}?area=${encodeURIComponent(area)}`;
           }
           
-          // 캐시 무효화를 위한 타임스탬프 추가 (forceRefresh가 true일 때)
           if (forceRefresh) {
             const timestamp = new Date().getTime();
             url = `${url}${url.includes('?') ? '&' : '?'}t=${timestamp}`;
@@ -183,14 +188,10 @@ const usePopulationStore = create(
           
           console.log(`Fetching population data from: ${url} (forceRefresh: ${forceRefresh})`);
           
-          // API 호출
           const response = await fetch(url);
           
-          // 오류 처리
           if (!response.ok) {
-            // 404 오류이고 fallback 시도하지 않은 경우 한 번 더 시도
             if (response.status === 404 && directAreaName && !directAreaName.includes('관광특구')) {
-              // 유사 지역명 시도 (예: '동대문'을 '동대문 관광특구'로)
               if (directAreaName.includes('동대문')) {
                 console.log("Trying with '동대문 관광특구' instead");
                 return get().fetchData('동대문 관광특구');
@@ -210,11 +211,11 @@ const usePopulationStore = create(
           const data = await response.json();
           console.log("Population data received:", data);
           
-          // 직접 검색인 경우 UI 피드백
           if (directAreaName) {
             get().setSearchFeedback(`"${directAreaName}" 데이터를 성공적으로 가져왔습니다.`);
           }
           
+          // 데이터 설정 및 예측 데이터 처리
           set({ 
             populationData: data,
             filteredData: data.places, 
@@ -222,7 +223,14 @@ const usePopulationStore = create(
             isLoading: false 
           });
           
-          // 기존에 선택된 나이대가 있으면 다시 필터링
+          // 예측 데이터가 있는 경우, 최적 방문 시간 계산
+          if (data.places && data.places.length > 0) {
+            const place = data.places[0]; // 첫 번째 장소
+            if (place.hasForecast && Array.isArray(place.forecastData)) {
+              get().calculateOptimalVisitTime(place);
+            }
+          }
+          
           const { selectedAgeGroup } = get();
           if (selectedAgeGroup !== 'all') {
             get().filterByAgeGroup(selectedAgeGroup);
@@ -234,14 +242,13 @@ const usePopulationStore = create(
             isLoading: false 
           });
           
-          // 직접 검색인 경우 에러 피드백
           if (directAreaName) {
             get().setSearchFeedback(`"${directAreaName}" 데이터를 찾을 수 없습니다.`);
           }
         }
       },
       
-      // 나이대별 필터링
+      // 기존 기능 유지
       filterByAgeGroup: (ageGroup) => {
         const { populationData } = get();
         
@@ -254,7 +261,6 @@ const usePopulationStore = create(
           return;
         }
         
-        // 선택된 나이대 기준으로 데이터 필터링 및 정렬
         const filtered = populationData.places
           .map(place => ({
             ...place,
@@ -265,7 +271,7 @@ const usePopulationStore = create(
         set({ filteredData: filtered });
       },
       
-      // 장소 선택
+      // 장소 선택 (최적 방문 시간 계산 추가)
       selectPlace: (placeId) => {
         const { filteredData } = get();
         if (!filteredData) return;
@@ -275,18 +281,80 @@ const usePopulationStore = create(
           : null;
         
         set({ selectedPlace });
+        
+        // 선택된 장소에 예측 데이터가 있으면 최적 방문 시간 계산
+        if (selectedPlace && selectedPlace.hasForecast) {
+          get().calculateOptimalVisitTime(selectedPlace);
+        } else {
+          set({ optimalVisitTime: null });
+        }
       },
       
-      // 혼잡도 레벨에 따른 색상 반환
+      // 새로 추가: 예측 데이터 처리 및 최적 방문 시간 계산
+      calculateOptimalVisitTime: (place) => {
+        if (!place || !place.hasForecast) {
+          set({ optimalVisitTime: null });
+          return;
+        }
+        
+        // API 응답에서 예측 데이터 배열 가져오기
+        const forecastData = place.FCST_PPLTN || [];
+        
+        if (!forecastData || forecastData.length === 0) {
+          set({ optimalVisitTime: null });
+          return;
+        }
+        
+        // 점수 기반으로 가장 덜 혼잡한 시간대 찾기
+        const scoredForecast = forecastData.map(forecast => ({
+          time: forecast.FCST_TIME,
+          congestionLevel: forecast.FCST_CONGEST_LVL,
+          score: congestionScores[forecast.FCST_CONGEST_LVL] || 3,
+          minPeople: forecast.FCST_PPLTN_MIN,
+          maxPeople: forecast.FCST_PPLTN_MAX
+        }));
+        
+        // 점수가 가장 낮은(덜 혼잡한) 시간 찾기
+        const optimal = scoredForecast.reduce((best, current) => {
+          // 현재 시간 이후의 예측만 고려
+          const forecastTime = new Date(current.time);
+          const now = new Date();
+          
+          if (forecastTime > now && current.score < best.score) {
+            return current;
+          }
+          return best;
+        }, { score: Infinity });
+        
+        // 최적 시간을 찾았다면 상태에 저장
+        if (optimal.score !== Infinity) {
+          set({ optimalVisitTime: optimal });
+        } else {
+          set({ optimalVisitTime: null });
+        }
+      },
+      
+      // 혼잡도 색상 반환
       getCongestionColor: (congestionLevel) => {
         return congestionColors[congestionLevel] || '#666666'; // 기본 회색
+      },
+      
+      // 혼잡도 점수 반환 (추가)
+      getCongestionScore: (congestionLevel) => {
+        return congestionScores[congestionLevel] || 3; // 기본값
+      },
+      
+      // 예측 차트 표시 여부 토글
+      toggleForecast: () => {
+        set(state => ({ showForecast: !state.showForecast }));
       },
       
       // 데이터 초기화
       resetData: () => {
         set({
           selectedPlace: null,
-          error: null
+          error: null,
+          optimalVisitTime: null
         });
       }
     }),
