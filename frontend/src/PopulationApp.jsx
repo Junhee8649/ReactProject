@@ -1,11 +1,12 @@
-// PopulationApp.jsx 파일 수정
-
+// frontend/src/PopulationApp.jsx
 import React, { useEffect, useRef } from 'react';
 import PopulationMap from './components/PopulationMap';
 import AgeGroupFilter from './components/AgeGroupFilter';
 import AreaSearch from './components/AreaSearch';
 import AreaCategories from './components/AreaCategories';
 import PlaceDetail from './components/PlaceDetail';
+import UserPreferences from './components/UserPreferences'; // 새로 추가
+import RecommendedPlaces from './components/RecommendedPlaces'; // 새로 추가
 import usePopulationStore from './store/populationStore';
 import './PopulationApp.css';
 
@@ -72,6 +73,9 @@ function PopulationApp() {
           <AgeGroupFilter />
         </div>
         
+        {/* 사용자 선호도 컴포넌트 추가 */}
+        <UserPreferences />
+        
         {selectedArea && (
           <div className="selected-area-info">
             선택된 지역: <strong>{getSelectedAreaName()}</strong>
@@ -88,12 +92,14 @@ function PopulationApp() {
         
         {error && <div className="error-message">{error}</div>}
         
-        {/* placeDetailRef를 추가하여 자동 스크롤 지점 지정 */}
         {selectedPlace && (
           <div ref={placeDetailRef}>
             <PlaceDetail />
           </div>
         )}
+        
+        {/* 추천 장소 모달 컴포넌트 추가 */}
+        <RecommendedPlaces />
       </main>
       
       <footer className="app-footer">
