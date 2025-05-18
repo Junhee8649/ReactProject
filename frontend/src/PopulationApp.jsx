@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+// PopulationApp.jsx 파일 수정
+
+import React, { useEffect, useRef } from 'react';
 import PopulationMap from './components/PopulationMap';
 import AgeGroupFilter from './components/AgeGroupFilter';
 import AreaSearch from './components/AreaSearch';
@@ -19,6 +21,9 @@ function PopulationApp() {
     error 
   } = usePopulationStore();
   
+  // PlaceDetail 컴포넌트에 대한 ref 생성
+  const placeDetailRef = useRef(null);
+  
   // 애플리케이션 마운트시 데이터 로드
   useEffect(() => {
     fetchAreas(); // 지역 목록 가져오기
@@ -37,6 +42,17 @@ function PopulationApp() {
     if (!selectedArea) return null;
     return availableAreas.find(a => a.id === selectedArea)?.name || selectedArea;
   };
+  
+  // selectedPlace가 변경될 때 자동 스크롤
+  useEffect(() => {
+    if (selectedPlace && placeDetailRef.current) {
+      // 부드러운 스크롤로 PlaceDetail 컴포넌트로 이동
+      placeDetailRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }
+  }, [selectedPlace]);
   
   return (
     <div className="app-container">
@@ -72,7 +88,12 @@ function PopulationApp() {
         
         {error && <div className="error-message">{error}</div>}
         
-        {selectedPlace && <PlaceDetail />}
+        {/* placeDetailRef를 추가하여 자동 스크롤 지점 지정 */}
+        {selectedPlace && (
+          <div ref={placeDetailRef}>
+            <PlaceDetail />
+          </div>
+        )}
       </main>
       
       <footer className="app-footer">

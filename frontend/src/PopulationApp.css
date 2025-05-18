@@ -383,38 +383,53 @@
   border-radius: 4px;
 }
 
-/* 지도 위 마커 스타일 개선 */
-.custom-marker-icon {
-  border: 2px solid #fff;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
+/* 마커 스타일 */
+.selected-marker-icon {
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
+  z-index: 1000 !important;
 }
 
 /* 툴팁 스타일 개선 */
 .leaflet-tooltip {
   background-color: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid #ccc !important;
+  border: 1px solid #e5e7eb !important;
   border-radius: 4px !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
-  padding: 8px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  padding: 6px 10px !important;
+  font-size: 0.9rem !important;
   max-width: 200px !important;
 }
 
 .leaflet-tooltip h3 {
   margin: 0 0 5px 0;
-  font-size: 14px;
+  font-size: 1rem;
   font-weight: 600;
-  color: #111827;
+  color: #1f2937;
 }
 
 .leaflet-tooltip p {
   margin: 3px 0;
-  font-size: 12px;
+  font-size: 0.85rem;
   color: #4b5563;
 }
 
-.leaflet-tooltip span {
-  font-weight: 600;
+/* 선택된 장소의 툴팁 스타일 */
+.selected-place-tooltip {
+  background-color: rgba(59, 130, 246, 0.9) !important;
+  color: white !important;
+  border: none !important;
+  padding: 5px 10px !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  text-align: center !important;
+}
+
+/* 툴팁 화살표 스타일 */
+.leaflet-tooltip-top:before {
+  border-top-color: rgba(59, 130, 246, 0.9) !important;
 }
 
 /* 지도 컨테이너 스타일 개선 */
@@ -591,4 +606,127 @@
   background-color: white;
   border-radius: 4px;
   padding: 0.5rem;
+}
+
+/* 예측 차트 섹션 */
+.forecast-section {
+  background-color: #f9fafb;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+.forecast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.forecast-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #4b5563;
+}
+
+.toggle-forecast-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.85rem;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.toggle-forecast-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.forecast-chart {
+  background-color: white;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.forecast-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.5rem;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.no-forecast {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+/* 최적 방문 시간 */
+.optimal-visit-time {
+  background-color: #f0f9ff;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #bae6fd;
+  margin-bottom: 1rem;
+}
+
+.optimal-visit-time h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #0c4a6e;
+}
+
+.optimal-time-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.optimal-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  background-color: white;
+  min-width: 120px;
+}
+
+.optimal-time-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.optimal-congestion {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.optimal-visit-time small {
+  font-size: 0.8rem;
+  color: #6b7280;
 }
