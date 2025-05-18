@@ -210,12 +210,15 @@ const usePopulationStore = create(
           
           const data = await response.json();
           console.log("Population data received:", data);
-          
-          if (directAreaName) {
-            get().setSearchFeedback(`"${directAreaName}" 데이터를 성공적으로 가져왔습니다.`);
+
+          // 원본 데이터 구조 확인
+          if (data.places && data.places.length > 0) {
+            console.log("첫번째 장소 데이터:", data.places[0]);
+            console.log("예측 데이터 존재 여부:", data.places[0].hasForecast);
+            console.log("원본 예측 데이터:", data.places[0].FCST_PPLTN);
           }
-          
-          // 데이터 설정 및 예측 데이터 처리
+
+          // FCST_PPLTN 데이터가 제대로 전달되도록 수정
           set({ 
             populationData: data,
             filteredData: data.places, 
@@ -226,7 +229,7 @@ const usePopulationStore = create(
           // 예측 데이터가 있는 경우, 최적 방문 시간 계산
           if (data.places && data.places.length > 0) {
             const place = data.places[0]; // 첫 번째 장소
-            if (place.hasForecast && Array.isArray(place.forecastData)) {
+            if (place.hasForecast && Array.isArray(place.FCST_PPLTN)) {
               get().calculateOptimalVisitTime(place);
             }
           }
@@ -292,15 +295,20 @@ const usePopulationStore = create(
       
       // 새로 추가: 예측 데이터 처리 및 최적 방문 시간 계산
       calculateOptimalVisitTime: (place) => {
+        console.log("calculateOptimalVisitTime 호출됨, 장소:", place.name);
+        
         if (!place || !place.hasForecast) {
+          console.log("장소가 없거나 예측 데이터가 없음");
           set({ optimalVisitTime: null });
           return;
         }
         
         // API 응답에서 예측 데이터 배열 가져오기
         const forecastData = place.FCST_PPLTN || [];
+        console.log("예측 데이터:", forecastData);
         
         if (!forecastData || forecastData.length === 0) {
+          console.log("예측 데이터 배열이 비어있음");
           set({ optimalVisitTime: null });
           return;
         }
@@ -313,23 +321,31 @@ const usePopulationStore = create(
           minPeople: forecast.FCST_PPLTN_MIN,
           maxPeople: forecast.FCST_PPLTN_MAX
         }));
+        console.log("점수 할당된 예측 데이터:", scoredForecast);
+        
+        // 현재 시간 확인
+        const now = new Date();
+        console.log("현재 시간:", now);
         
         // 점수가 가장 낮은(덜 혼잡한) 시간 찾기
         const optimal = scoredForecast.reduce((best, current) => {
           // 현재 시간 이후의 예측만 고려
           const forecastTime = new Date(current.time);
-          const now = new Date();
+          console.log("검토 중인 시간:", forecastTime, "점수:", current.score, "현재보다 이후?", forecastTime > now);
           
           if (forecastTime > now && current.score < best.score) {
             return current;
           }
           return best;
         }, { score: Infinity });
+        console.log("계산된 최적 시간:", optimal);
         
         // 최적 시간을 찾았다면 상태에 저장
         if (optimal.score !== Infinity) {
+          console.log("최적 시간 설정:", optimal);
           set({ optimalVisitTime: optimal });
         } else {
+          console.log("적합한 최적 시간 없음");
           set({ optimalVisitTime: null });
         }
       },

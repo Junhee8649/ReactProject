@@ -124,6 +124,7 @@ export default async function handler(req, res) {
     const dataArray = rawData["SeoulRtd.citydata_ppltn"] || [];
     console.log("Data Array Length:", dataArray.length);
     
+    // 응답 데이터 구조 변환
     const processedData = {
       timestamp: new Date().toISOString(),
       totalCount: dataArray.length,
@@ -151,7 +152,7 @@ export default async function handler(req, res) {
         },
         updatedAt: place.PPLTN_TIME,
         hasForecast: place.FCST_YN === "Y",
-        // 예측 데이터 그대로 전달 (클라이언트에서 가공)
+        // 예측 데이터 추가
         FCST_PPLTN: place.FCST_PPLTN || []
       }))
     };
