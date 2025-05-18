@@ -4,13 +4,20 @@ import usePopulationStore from '../store/populationStore';
 
 const RecommendedPlaces = () => {
   const { 
-    recommendedPlaces, 
+    recommendedPlaces,       // 현재 지역 내 추천
+    globalRecommendations,   // 전역 추천 (모든 수집된 지역 기반)
     showRecommendations, 
     toggleRecommendations,
     selectPlace,
     getCongestionColor,
-    userPreferences
+    userPreferences,
+    dataCollectionStatus
   } = usePopulationStore();
+  
+  // 사용할 추천 목록 결정 (전역 추천이 있으면 우선 사용)
+  const placesToShow = globalRecommendations.length > 0 
+    ? globalRecommendations 
+    : recommendedPlaces;
   
   if (!showRecommendations) {
     return null;
@@ -29,6 +36,17 @@ const RecommendedPlaces = () => {
           </button>
         </div>
         
+        {/* 데이터 수집 상태 표시 */}
+        {dataCollectionStatus.loaded < dataCollectionStatus.total && (
+          <div className="recommendation-data-status">
+            <div className="data-status-icon">ℹ️</div>
+            <div className="data-status-text">
+              현재 {dataCollectionStatus.loaded}/{dataCollectionStatus.total} 지역의 데이터가 수집되었습니다.
+              데이터 수집이 완료되면 더 정확한 추천이 제공됩니다.
+            </div>
+          </div>
+        )}
+        
         <div className="recommendation-summary">
           <div className="preference-summary">
             <h4>현재 설정된 선호도:</h4>
@@ -41,8 +59,8 @@ const RecommendedPlaces = () => {
         </div>
         
         <div className="recommended-list">
-          {recommendedPlaces.length > 0 ? (
-            recommendedPlaces.map((place, index) => (
+          {placesToShow.length > 0 ? (
+            placesToShow.map((place, index) => (
               <div key={place.id} className="recommended-item">
                 <div className="recommendation-rank">
                   <span className="rank-number">{index + 1}</span>
@@ -86,6 +104,15 @@ const RecommendedPlaces = () => {
               <p>선호도 설정을 변경해보세요.</p>
             </div>
           )}
+        </div>
+        
+        {/* 데이터 출처 표시 */}
+        <div className="recommendation-source">
+          <small>
+            {globalRecommendations.length > 0 
+              ? `${dataCollectionStatus.loaded}개 지역의 데이터를 분석한 추천입니다.`
+              : '현재 표시 중인 지역의 데이터만 분석한 추천입니다.'}
+          </small>
         </div>
       </div>
     </div>
