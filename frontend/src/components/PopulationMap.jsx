@@ -13,6 +13,13 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// 중요 지역 목록 - 항상 표시해야할 지역 목록
+const importantAreas = [
+  '강남 MICE 관광특구', '명동 관광특구', '홍대 관광특구', 
+  '동대문 관광특구', '이태원 관광특구', '잠실 관광특구',
+  '광화문·덕수궁', '경복궁', '서울역', '강남역', '홍대입구역(2호선)'
+];
+
 // 상수 정의
 const SEOUL_CENTER = [37.5665, 126.9780];
 const DEFAULT_ZOOM = 12;
@@ -282,6 +289,46 @@ function PopulationMap() {
     return (selectedPlace || selectedAreaObj) ? 15 : DEFAULT_ZOOM;
   }, [selectedPlace, selectedAreaObj]);
 
+  // 줌 레벨에 따라 표시할 마커 최적화
+  const visibleMarkers = useMemo(() => {
+    if (!filteredData) return [];
+    
+    // 줌 아웃 상태일 때 마커 수 제한
+    if (mapZoom < 13) {
+      // 선택된 장소와 중요 장소만 표시
+      return filteredData.filter(place => 
+        place.id === selectedPlace?.id || 
+        importantAreas.includes(place.name)
+      );
+    }
+    
+    // 중간 줌 레벨에서는 더 많은 장소를 표시하지만 여전히 필터링
+    if (mapZoom < 15) {
+      // 최대 30개 장소 표시, 혼잡도 기준으로 우선순위 지정
+      return [...filteredData]
+        .sort((a, b) => {
+          // 첫 번째 우선순위: 선택된 장소
+          if (a.id === selectedPlace?.id) return -1;
+          if (b.id === selectedPlace?.id) return 1;
+          
+          // 두 번째 우선순위: 혼잡도 수준
+          const congestionOrder = {
+            '매우 붐빔': 5,
+            '붐빔': 4,
+            '약간 붐빔': 3,
+            '보통': 2,
+            '여유': 1
+          };
+          
+          return congestionOrder[b.congestionLevel] - congestionOrder[a.congestionLevel];
+        })
+        .slice(0, 30);
+    }
+    
+    // 높은 줌 레벨에서는 모든 장소 표시
+    return filteredData;
+  }, [filteredData, selectedPlace, mapZoom]);
+
   // 로딩 상태 처리
   if (isLoading && !filteredData) {
     return (
@@ -309,6 +356,7 @@ function PopulationMap() {
         center={SEOUL_CENTER}
         zoom={DEFAULT_ZOOM}
         style={{ height: '500px', width: '100%' }}
+        preferCanvas={true} // 성능 최적화를 위한 캔버스 렌더링
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -327,8 +375,8 @@ function PopulationMap() {
           />
         ))}
         
-        {/* 인구 데이터 원 (선택되지 않은 장소만) */}
-        {filteredData && filteredData.map(place => (
+        {/* 인구 데이터 원 (선택되지 않은 장소만) - 최적화된 마커 렌더링 */}
+        {visibleMarkers.map(place => (
           <PopulationCircle
             key={place.id}
             place={place}
