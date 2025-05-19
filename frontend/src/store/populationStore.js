@@ -73,7 +73,7 @@ const cacheUtils = {
         }
       }
       
-      // 예측 데이터 최적화 (다음 6시간만 유지)
+      // 예측 데이터 최적화 (과거 6시간부터 미래 12시간까지 유지)
       if (data.places) {
         data.places.forEach(place => {
           if (place.FCST_PPLTN && Array.isArray(place.FCST_PPLTN)) {
@@ -82,9 +82,9 @@ const cacheUtils = {
               .filter(f => {
                 const forecastTime = new Date(f.FCST_TIME);
                 const hoursDiff = (forecastTime - now) / (1000 * 60 * 60);
-                return hoursDiff >= 0 && hoursDiff <= 6; // 다음 6시간만 유지
+                return hoursDiff >= -6 && hoursDiff <= 12; // 과거 6시간부터 미래 12시간까지
               })
-              .slice(0, 8); // 최대 8개 예측 포인트
+              .slice(0, 24); // 최대 24개 예측 포인트
           }
         });
       }
