@@ -34,23 +34,26 @@ function PopulationApp() {
     // 지역 목록 가져오기
     fetchAreas();
     
-    // 실시간 업데이트를 위한 인터벌 설정 (3분)
+    // 실시간 업데이트를 위한 인터벌 설정 (3분에서 5분으로 변경)
     const intervalId = setInterval(() => {
       fetchData(null, true); // 현재 표시 중인 지역 데이터 새로고침
-    }, 3 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5분으로 변경
     
-    // 백그라운드 데이터 수집 시작 (초기 로딩 후)
+    // 백그라운드 데이터 수집 지연 시작 (5초에서 10초로 변경)
     const collectionTimeout = setTimeout(() => {
       if (!isLoading) {
+        // 리소스 최적화 함수 실행 추가
+        optimizeResources();
+        // 데이터 수집 시작
         startDataCollection();
       }
-    }, 5000);
+    }, 10000); // 10초로 변경
     
     return () => {
       clearInterval(intervalId);
       clearTimeout(collectionTimeout);
     };
-  }, [fetchData, fetchAreas, startDataCollection, isLoading]);
+  }, [fetchData, fetchAreas, startDataCollection, optimizeResources, isLoading]);
   
   // 선택된 지역 이름 가져오기
   const getSelectedAreaName = () => {
