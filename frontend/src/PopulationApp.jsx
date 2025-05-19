@@ -9,6 +9,7 @@ import UserPreferences from './components/UserPreferences';
 import RecommendedPlaces from './components/RecommendedPlaces';
 import DataCollectionStatus from './components/DataCollectionStatus';
 import LoadingSequence from './components/LoadingSequence';
+import { optimizeResources } from './utils/performanceUtils';
 import usePopulationStore from './store/populationStore';
 import './PopulationApp.css';
 
@@ -23,37 +24,43 @@ function PopulationApp() {
     availableAreas,
     startDataCollection,
     error,
-    isLoading
+    isLoading,
+    isDataInitialized,  // 새로 추가할 상태
+    setDataInitialized  // 새로 추가할 액션
   } = usePopulationStore();
   
-  // PlaceDetail 컴포넌트에 대한 ref 생성
-  const placeDetailRef = useRef(null);
-  
-  // 앱 초기화 시 필요한 데이터 로드
-  useEffect(() => {
-    // 지역 목록 가져오기
-    fetchAreas();
+    // 초기화 플래그용 ref 추가
+    const isInitializedRef = useRef(false);
     
-    // 실시간 업데이트를 위한 인터벌 설정 (3분에서 5분으로 변경)
-    const intervalId = setInterval(() => {
-      fetchData(null, true); // 현재 표시 중인 지역 데이터 새로고침
-    }, 5 * 60 * 1000); // 5분으로 변경
-    
-    // 백그라운드 데이터 수집 지연 시작 (5초에서 10초로 변경)
-    const collectionTimeout = setTimeout(() => {
-      if (!isLoading) {
-        // 리소스 최적화 함수 실행 추가
-        optimizeResources();
-        // 데이터 수집 시작
-        startDataCollection();
-      }
-    }, 10000); // 10초로 변경
-    
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(collectionTimeout);
-    };
-  }, [fetchData, fetchAreas, startDataCollection, optimizeResources, isLoading]);
+    // 앱 초기화 시 필요한 데이터 로드
+    useEffect(() => {
+      // 이미 초기화되었으면 실행하지 않음
+      if (isInitializedRef.current) return;
+      isInitializedRef.current = true;
+      
+      // 지역 목록 가져오기 (한 번만 실행)
+      fetchAreas();
+      
+      // 실시간 업데이트를 위한 인터벌 설정 (3분)
+      const intervalId = setInterval(() => {
+        if (selectedArea) {
+          fetchData(null, true); // 현재 표시 중인 지역 데이터 새로고침
+        }
+      }, 3 * 60 * 1000);
+      
+      // 백그라운드 데이터 수집 - 초기 로드 후 한 번만 실행
+      const collectionTimeout = setTimeout(() => {
+        if (!isLoading) {
+          startDataCollection();
+          setDataInitialized(true);
+        }
+      }, 5000);
+      
+      return () => {
+        clearInterval(intervalId);
+        clearTimeout(collectionTimeout);
+      };
+    }, [fetchData, fetchAreas, startDataCollection, isLoading, setDataInitialized]);
   
   // 선택된 지역 이름 가져오기
   const getSelectedAreaName = () => {
