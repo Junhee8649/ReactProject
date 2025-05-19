@@ -37,14 +37,23 @@ const isValidCoordinate = (coord) => {
          coord[1] >= 126.8 && coord[1] <= 127.2;
 };
 
-// 지도 센터 변경 컴포넌트
+// 지도 중심 변경 컴포넌트 메모이제이션 개선
 const MapCenterUpdater = React.memo(({ center, zoom }) => {
   const map = useMap();
   
   useEffect(() => {
     if (isValidCoordinate(center)) {
       try {
-        map.setView(center, zoom);
+        // 현재 중심과 새 중심이 거의 같으면 불필요한 업데이트 스킵
+        const currentCenter = map.getCenter();
+        const isSameLocation = 
+          Math.abs(currentCenter.lat - center[0]) < 0.0001 && 
+          Math.abs(currentCenter.lng - center[1]) < 0.0001 &&
+          map.getZoom() === zoom;
+          
+        if (!isSameLocation) {
+          map.setView(center, zoom, { animate: true, duration: 0.5 });
+        }
       } catch (error) {
         console.error("Map update error:", error);
         map.setView(SEOUL_CENTER, DEFAULT_ZOOM);
@@ -56,6 +65,15 @@ const MapCenterUpdater = React.memo(({ center, zoom }) => {
   }, [center, zoom, map]);
   
   return null;
+}, (prevProps, nextProps) => {
+  // 이전 props와 다음 props를 비교하여 최적화
+  return (
+    prevProps.zoom === nextProps.zoom &&
+    Array.isArray(prevProps.center) && 
+    Array.isArray(nextProps.center) &&
+    prevProps.center[0] === nextProps.center[0] &&
+    prevProps.center[1] === nextProps.center[1]
+  );
 });
 
 // 지역 원 컴포넌트

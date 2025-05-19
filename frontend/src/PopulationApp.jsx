@@ -1,4 +1,4 @@
-// frontend/src/PopulationApp.jsx
+// frontend/src/PopulationApp.jsx 수정
 import React, { useEffect, useRef } from 'react';
 import PopulationMap from './components/PopulationMap';
 import AgeGroupFilter from './components/AgeGroupFilter';
@@ -25,42 +25,49 @@ function PopulationApp() {
     startDataCollection,
     error,
     isLoading,
-    isDataInitialized,  // 새로 추가할 상태
-    setDataInitialized  // 새로 추가할 액션
+    optimizeResources: storeOptimizeResources
   } = usePopulationStore();
   
-    // 초기화 플래그용 ref 추가
-    const isInitializedRef = useRef(false);
+  // 초기화 플래그용 ref 추가
+  const isInitializedRef = useRef(false);
+  const placeDetailRef = useRef(null);
+  
+  // 앱 초기화 시 필요한 데이터 로드
+  useEffect(() => {
+    // 이미 초기화되었으면 실행하지 않음
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
     
-    // 앱 초기화 시 필요한 데이터 로드
-    useEffect(() => {
-      // 이미 초기화되었으면 실행하지 않음
-      if (isInitializedRef.current) return;
-      isInitializedRef.current = true;
-      
-      // 지역 목록 가져오기 (한 번만 실행)
-      fetchAreas();
-      
-      // 실시간 업데이트를 위한 인터벌 설정 (3분)
-      const intervalId = setInterval(() => {
-        if (selectedArea) {
-          fetchData(null, true); // 현재 표시 중인 지역 데이터 새로고침
-        }
-      }, 3 * 60 * 1000);
-      
-      // 백그라운드 데이터 수집 - 초기 로드 후 한 번만 실행
-      const collectionTimeout = setTimeout(() => {
-        if (!isLoading) {
-          startDataCollection();
-          setDataInitialized(true);
-        }
-      }, 5000);
-      
-      return () => {
-        clearInterval(intervalId);
-        clearTimeout(collectionTimeout);
-      };
-    }, [fetchData, fetchAreas, startDataCollection, isLoading, setDataInitialized]);
+    // 지역 목록 가져오기 (한 번만 실행)
+    fetchAreas();
+    
+    // 성능 최적화 실행 - 추가된 부분
+    optimizeResources(usePopulationStore);
+    
+    // 스토어의 최적화 함수도 실행
+    if (typeof storeOptimizeResources === 'function') {
+      storeOptimizeResources();
+    }
+    
+    // 실시간 업데이트를 위한 인터벌 설정 (3분)
+    const intervalId = setInterval(() => {
+      if (selectedArea) {
+        fetchData(null, true); // 현재 표시 중인 지역 데이터 새로고침
+      }
+    }, 3 * 60 * 1000);
+    
+    // 백그라운드 데이터 수집 - 초기 로드 후 한 번만 실행
+    const collectionTimeout = setTimeout(() => {
+      if (!isLoading) {
+        startDataCollection();
+      }
+    }, 5000);
+    
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(collectionTimeout);
+    };
+  }, [fetchData, fetchAreas, startDataCollection, isLoading, storeOptimizeResources]);
   
   // 선택된 지역 이름 가져오기
   const getSelectedAreaName = () => {
