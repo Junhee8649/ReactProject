@@ -310,16 +310,16 @@ const PlaceDetail = () => {
                         // 툴팁 헤더 - 시간과 혼잡도 함께 표시
                         const item = futureForecast.find(d => d.time === time);
                         return (
-                          <div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>{time}</div>
-                            <div style={{ 
+                          <span>
+                            <span style={{ fontWeight: 'bold', marginBottom: '3px' }}>{time}</span>
+                            <span style={{ 
                               color: item ? item.color : '#666',
                               fontSize: '12px',
                               fontWeight: 'bold'
                             }}>
                               {item ? item.congestionLevel : ''}
-                            </div>
-                          </div>
+                            </span>
+                          </span>
                         );
                       }}
                       contentStyle={{
