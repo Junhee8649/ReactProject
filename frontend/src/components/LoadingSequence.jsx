@@ -28,9 +28,10 @@ const LoadingSequence = () => {
   useEffect(() => {
     // 초기 로딩이 완료되면 시작 화면 숨기기
     if ((!isLoading && progress >= 100) || progress >= 100) {
+      // 최소 표시 시간 보장 (1초로 축소)
       const fadeTimer = setTimeout(() => {
         setShowInitialScreen(false);
-      }, 500);
+      }, 1000); // 500ms에서 1000ms로 변경
       
       return () => clearTimeout(fadeTimer);
     }
