@@ -171,85 +171,96 @@ const cacheUtils = {
 const debouncedCalculations = {
   // 전역 추천 계산
   globalRecommendations: debounce((state) => {
-    const { cachedAllAreasData, userPreferences } = state;
+    // 이미 계산 중이면 건너뛰기
+    if (state.isCalculatingRecommendations) return;
     
-    if (!cachedAllAreasData || cachedAllAreasData.length === 0) {
-      state.set({ globalRecommendations: [] });
-      return;
-    }
+    state.set({ isCalculatingRecommendations: true });
     
-    // 중복 제거 (같은 id의 장소는 가장 최근 데이터만 사용)
-    const uniquePlaces = [];
-    const placeIds = new Set();
-    
-    cachedAllAreasData.forEach(place => {
-      if (!placeIds.has(place.id)) {
-        placeIds.add(place.id);
-        uniquePlaces.push(place);
-      }
-    });
-    
-    // 작은 청크로 처리하여 UI 블로킹 방지
-    const CHUNK_SIZE = 30;
-    const places = [...uniquePlaces];
-    const results = [];
-    
-    const processNextChunk = () => {
-      if (places.length === 0) {
-        // 완료, 결과로 상태 업데이트
-        const topRecommendations = results
-          .sort((a, b) => b.recommendScore - a.recommendScore)
-          .slice(0, 5);
-          
-        state.set({ globalRecommendations: topRecommendations });
+    // 지연 타이머 설정하여 UI 블로킹 방지
+    setTimeout(() => {
+      const { cachedAllAreasData, userPreferences } = state;
+      
+      if (!cachedAllAreasData || cachedAllAreasData.length === 0) {
+        state.set({ globalRecommendations: [], isCalculatingRecommendations: false });
         return;
       }
       
-      // 다음 청크 처리
-      const chunk = places.splice(0, Math.min(CHUNK_SIZE, places.length));
+      // 중복 제거 (같은 id의 장소는 가장 최근 데이터만 사용)
+      const uniquePlaces = [];
+      const placeIds = new Set();
       
-      // 이 청크에 대한 점수 계산
-      const scoredChunk = chunk.map(place => {
-        // 기본 점수
-        let score = 50;
-        
-        // 연령대별 점수 (0-30점)
-        const ageGroupRate = place.ageGroups[state.userPreferences.preferredAgeGroup] || 0;
-        score += ageGroupRate * 1.5;
-        
-        // 혼잡도 점수 (0-20점)
-        const congestionScores = {
-          '여유': state.userPreferences.preferQuiet ? 20 : 5,
-          '보통': state.userPreferences.preferQuiet ? 15 : 10,
-          '약간 붐빔': 10,
-          '붐빔': state.userPreferences.preferQuiet ? 5 : 15,
-          '매우 붐빔': state.userPreferences.preferQuiet ? 0 : 20
-        };
-        score += congestionScores[place.congestionLevel] || 10;
-        
-        // 붐비는 곳 회피 설정 (-10점)
-        if (state.userPreferences.avoidCrowds && 
-            (place.congestionLevel === '붐빔' || place.congestionLevel === '매우 붐빔')) {
-          score -= 10;
+      cachedAllAreasData.forEach(place => {
+        if (!placeIds.has(place.id)) {
+          placeIds.add(place.id);
+          uniquePlaces.push(place);
         }
-        
-        return {
-          ...place,
-          recommendScore: score,
-          matchReason: getMatchReason(place, state.userPreferences)
-        };
       });
       
-      // 결과에 추가
-      results.push(...scoredChunk);
+      // 작은 청크로 처리하여 UI 블로킹 방지
+      const CHUNK_SIZE = 30;
+      const places = [...uniquePlaces];
+      const results = [];
       
-      // 작은 지연으로 다음 청크 예약
-      setTimeout(processNextChunk, 10);
-    };
-    
-    // 처리 시작
-    processNextChunk();
-  }, 1000)
+      const processNextChunk = () => {
+        if (places.length === 0) {
+          // 완료, 결과로 상태 업데이트
+          const topRecommendations = results
+            .sort((a, b) => b.recommendScore - a.recommendScore)
+            .slice(0, 5);
+            
+          state.set({ 
+            globalRecommendations: topRecommendations,
+            isCalculatingRecommendations: false
+          });
+          return;
+        }
+        
+        // 다음 청크 처리
+        const chunk = places.splice(0, Math.min(CHUNK_SIZE, places.length));
+        
+        // 이 청크에 대한 점수 계산
+        const scoredChunk = chunk.map(place => {
+          // 기본 점수
+          let score = 50;
+          
+          // 연령대별 점수 (0-30점)
+          const ageGroupRate = place.ageGroups[state.userPreferences.preferredAgeGroup] || 0;
+          score += ageGroupRate * 1.5;
+          
+          // 혼잡도 점수 (0-20점)
+          const congestionScores = {
+            '여유': state.userPreferences.preferQuiet ? 20 : 5,
+            '보통': state.userPreferences.preferQuiet ? 15 : 10,
+            '약간 붐빔': 10,
+            '붐빔': state.userPreferences.preferQuiet ? 5 : 15,
+            '매우 붐빔': state.userPreferences.preferQuiet ? 0 : 20
+          };
+          score += congestionScores[place.congestionLevel] || 10;
+          
+          // 붐비는 곳 회피 설정 (-10점)
+          if (state.userPreferences.avoidCrowds && 
+              (place.congestionLevel === '붐빔' || place.congestionLevel === '매우 붐빔')) {
+            score -= 10;
+          }
+          
+          return {
+            ...place,
+            recommendScore: score,
+            matchReason: getMatchReason(place, state.userPreferences)
+          };
+        });
+        
+        // 결과에 추가
+        results.push(...scoredChunk);
+        
+        // 작은 지연으로 다음 청크 예약
+        setTimeout(processNextChunk, 10);
+      };
+      
+      // 처리 시작
+      processNextChunk();
+    }, 100);
+  }, 2000)
 };
 
 // 추천 이유 생성 헬퍼 함수
@@ -312,6 +323,7 @@ const usePopulationStore = create(
       recommendedPlaces: [],      // 현재 지역 기반 추천 장소 목록
       globalRecommendations: [],  // 모든 캐시된 지역 기반 추천 장소 목록
       showRecommendations: false, // 추천 화면 표시 여부
+      isCalculatingRecommendations: false, // 추가: 계산 중 플래그
       
       // 데이터 수집 관련 상태
       cachedAllAreasData: [],    // 캐시된 모든 지역 데이터
@@ -326,6 +338,24 @@ const usePopulationStore = create(
       requestQueue: [],
       isProcessingQueue: false,
       pauseDataCollection: false,
+      
+      // 중요성에 따른 지역 분류
+      categorizePlaces: () => {
+        return {
+          // 사용자 선택 지역과 중요 지역 (항상 최신 유지)
+          highPriority: [
+            get().selectedArea, 
+            '강남 MICE 관광특구', 
+            '명동 관광특구', 
+            '홍대 관광특구'
+          ].filter(Boolean),
+          
+          // 나머지 지역 (필요할 때만 로드)
+          lowPriority: importantAreas.filter(area => 
+            !get().highPriority?.includes(area)
+          )
+        };
+      },
       
       // 요청 큐잉 및 우선순위 시스템
       queueRequest: (requestFn, priority = 'normal') => {
@@ -393,19 +423,49 @@ const usePopulationStore = create(
           inProgress: false
         };
         
-        set({ cacheStatus, dataCollectionStatus });
+        set({ 
+          cacheStatus, 
+          dataCollectionStatus,
+          // 데이터 수집 기본값 일시 정지로 설정
+          pauseDataCollection: true 
+        });
         
-        // 이미 캐시된 데이터 로드
+        // 이미 캐시된 데이터 로드 (필요한 것만)
         if (cacheStatus.areaCount > 0) {
-          const cachedData = cacheUtils.loadAllCachedAreas();
+          // 처음에는 최대 5개 지역만 로드하여 초기 로딩 속도 개선
+          const limitedAreas = cacheStatus.areaIds.slice(0, 5);
+          const cachedData = [];
+          
+          limitedAreas.forEach(areaId => {
+            const data = cacheUtils.loadAreaData(areaId);
+            if (data && data.places) {
+              cachedData.push(...data.places);
+            }
+          });
+          
           set({ cachedAllAreasData: cachedData });
+          console.log(`Limited initial load: ${cachedData.length} places from ${limitedAreas.length} cached areas`);
           
-          console.log(`Loaded ${cachedData.length} places from ${cacheStatus.areaCount} cached areas`);
-          
-          // 추천 계산
-          if (cachedData.length > 0) {
-            setTimeout(() => get().calculateGlobalRecommendations(), 500);
-          }
+          // 나머지 캐시 데이터는 지연 로드
+          setTimeout(() => {
+            const remainingAreas = cacheStatus.areaIds.slice(5);
+            let remainingData = [...cachedData];
+            
+            remainingAreas.forEach(areaId => {
+              const data = cacheUtils.loadAreaData(areaId);
+              if (data && data.places) {
+                remainingData = [...remainingData, ...data.places];
+              }
+            });
+            
+            set({ cachedAllAreasData: remainingData });
+            console.log(`Full cache loaded: ${remainingData.length} places from ${cacheStatus.areaCount} areas`);
+            
+            // 추천 계산 (지연하여 UI 블로킹 방지)
+            if (remainingData.length > 0) {
+              setTimeout(() => get().calculateGlobalRecommendations(), 2000);
+            }
+          }, 5000); // 5초 후 나머지 로드
         }
         
         // 기본 지역 데이터 로드
@@ -729,7 +789,7 @@ const usePopulationStore = create(
         // 아직 캐시되지 않은 중요 지역 필터링
         const areasToFetch = importantAreas
           .filter(area => !cachedAreas.includes(area))
-          .slice(0, 3); // 한 번에 최대 3개만 가져오기
+          .slice(0, 1); // 한 번에 최대 1개만 가져오기 (3에서 변경)
         
         if (areasToFetch.length === 0) {
           console.log('모든 중요 지역이 이미 캐시되었습니다.');
@@ -809,7 +869,7 @@ const usePopulationStore = create(
               }
             }));
           }
-        }, 10000); // 10초 후 다음 배치 처리
+        }, 30000); // 10초에서 30초로 변경
       },
       
       filterByAgeGroup: (ageGroup) => {
@@ -1038,6 +1098,54 @@ const usePopulationStore = create(
         }
         
         set(state => ({ showRecommendations: !state.showRecommendations }));
+      },
+      
+      // 자원 최적화 함수 추가
+      optimizeResources: () => {
+        const state = get();
+        
+        // 1. 오래된 캐시 항목 정리
+        const cachedAreas = [...state.cacheStatus.areaIds];
+        const now = Date.now();
+        
+        let removedCount = 0;
+        
+        cachedAreas.forEach(areaId => {
+          // 중요 지역이 아닌 항목 중 12시간 이상 지난 항목 제거
+          if (!importantAreas.includes(areaId)) {
+            try {
+              const cached = localStorage.getItem(`area_${areaId}`);
+              if (cached) {
+                const cacheItem = JSON.parse(cached);
+                if (now - cacheItem.timestamp > 12 * 60 * 60 * 1000) {
+                  localStorage.removeItem(`area_${areaId}`);
+                  removedCount++;
+                }
+              }
+            } catch (e) {
+              console.error("Cache cleanup error:", e);
+            }
+          }
+        });
+        
+        // 2. 메모리 최적화 - 필요없는 데이터 참조 제거
+        if (state.cachedAllAreasData.length > 100) {
+          // 최대 100개 장소만 유지 (중요 지역 우선)
+          const importantPlaces = state.cachedAllAreasData.filter(place => 
+            importantAreas.includes(place.name)
+          );
+          
+          const otherPlaces = state.cachedAllAreasData.filter(place => 
+            !importantAreas.includes(place.name)
+          ).slice(0, 100 - importantPlaces.length);
+          
+          set({ cachedAllAreasData: [...importantPlaces, ...otherPlaces] });
+        }
+        
+        console.log(`Resource optimization: Removed ${removedCount} old cache entries`);
+        
+        // 3. 3시간마다 실행 (앱이 열려있는 동안)
+        setTimeout(() => get().optimizeResources(), 3 * 60 * 60 * 1000);
       }
     }),
     {
