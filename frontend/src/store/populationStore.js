@@ -985,19 +985,31 @@ const usePopulationStore = create(
       },
       
       selectPlace: (placeId) => {
-        const { filteredData } = get();
-        if (!filteredData) return;
+        const { filteredData, globalRecommendations, recommendedPlaces } = get();
         
-        const selectedPlace = placeId 
-          ? filteredData.find(p => p.id === placeId)
-          : null;
+        // 먼저 filteredData에서 찾기
+        let selectedPlace = filteredData ? filteredData.find(p => p.id === placeId) : null;
         
-        set({ selectedPlace });
+        // filteredData에 없으면 추천 목록에서 찾기
+        if (!selectedPlace) {
+          const allRecommendations = [...globalRecommendations, ...recommendedPlaces];
+          selectedPlace = allRecommendations.find(p => p.id === placeId);
+          
+          // 추천 장소를 선택했다면, 해당 지역의 전체 데이터도 로드
+          if (selectedPlace) {
+            console.log(`추천 장소 선택: ${selectedPlace.name} - 데이터 로드 중...`);
+            get().fetchData(selectedPlace.name);
+          }
+        }
         
-        if (selectedPlace && selectedPlace.hasForecast) {
-          get().calculateOptimalVisitTime(selectedPlace);
-        } else {
-          set({ optimalVisitTime: null });
+        if (selectedPlace) {
+          set({ selectedPlace });
+          
+          if (selectedPlace.hasForecast) {
+            get().calculateOptimalVisitTime(selectedPlace);
+          } else {
+            set({ optimalVisitTime: null });
+          }
         }
       },
       

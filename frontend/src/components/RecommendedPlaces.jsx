@@ -91,6 +91,12 @@ const RecommendedPlaces = () => {
                     onClick={() => {
                       selectPlace(place.id);
                       toggleRecommendations();
+                      
+                      // 지도 영역으로 스크롤
+                      const mapElement = document.querySelector('.map-container');
+                      if (mapElement) {
+                        mapElement.scrollIntoView({ behavior: 'smooth' });
+                      }
                     }}
                   >
                     이 장소로 이동
