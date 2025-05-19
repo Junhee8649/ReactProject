@@ -680,11 +680,32 @@ const usePopulationStore = create(
         state.queueRequest(requestFn, priority);
       },
       
-      // 데이터 수집 제어
+      // 데이터 수집 일시 중지/재개 토글
       togglePauseDataCollection: () => {
         set(state => ({ 
-          pauseDataCollection: !state.pauseDataCollection 
+          pauseDataCollection: !state.pauseDataCollection,
+          // 메시지 피드백 추가
+          searchFeedback: !state.pauseDataCollection 
+            ? "데이터 수집이 일시 중지되었습니다." 
+            : "데이터 수집이 재개되었습니다."
         }));
+        
+        // 메시지 자동 삭제
+        setTimeout(() => {
+          set({ searchFeedback: '' });
+        }, 3000);
+        
+        // 일시 중지 상태에서 재개할 때 수집 다시 시작
+        if (get().pauseDataCollection) {
+          setTimeout(() => {
+            // 현재 진행 중이 아니고 완료되지 않았으면 재개
+            const { dataCollectionStatus } = get();
+            if (!dataCollectionStatus.inProgress && 
+                dataCollectionStatus.loaded < dataCollectionStatus.total) {
+              get().startDataCollection();
+            }
+          }, 500);
+        }
       },
       
       // 최적화된 백그라운드 데이터 수집
