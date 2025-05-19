@@ -1770,6 +1770,17 @@ img.lazy-load.loaded {
   color: #6b7280;
 }
 
+/* 하단 정보 스타일 개선 */
+.recommendation-source {
+  text-align: right;
+  padding: 0 1.5rem 1rem 1.5rem;
+  color: var(--color-gray-500);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--color-gray-200);
+  padding-top: 0.75rem;
+  margin-top: 1rem;
+}/* CSS 추가 - PopulationApp.css 파일에 추가 */
+
 /* 추천 범위 배지 스타일 */
 .recommendation-scope {
   margin-bottom: 1rem;

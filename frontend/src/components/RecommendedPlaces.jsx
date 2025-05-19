@@ -134,12 +134,10 @@ const RecommendedPlaces = () => {
           )}
         </div>
         
-        {/* 데이터 출처 표시 */}
+        {/* 하단 정보 - 마지막 업데이트 시간으로 대체 */}
         <div className="recommendation-source">
           <small>
-            {globalRecommendations.length > 0 
-              ? `${dataCollectionStatus.loaded}개 지역의 데이터를 분석한 추천입니다.`
-              : '현재 표시 중인 지역의 데이터만 분석한 추천입니다.'}
+            마지막 업데이트: {new Date().toLocaleString()}
           </small>
         </div>
       </div>
