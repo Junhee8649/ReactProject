@@ -1769,3 +1769,62 @@ img.lazy-load.loaded {
   margin: 0.5rem 0;
   color: #6b7280;
 }
+
+/* 추천 범위 배지 스타일 */
+.recommendation-scope {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+}
+
+.global-recommendation-badge, 
+.local-recommendation-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.global-recommendation-badge {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--color-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.local-recommendation-badge {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: var(--color-gray-700);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+.global-recommendation-badge svg,
+.local-recommendation-badge svg {
+  flex-shrink: 0;
+}
+
+/* 데이터 상태 표시 스타일 개선 */
+.recommendation-data-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin: 0 1.5rem 1rem 1.5rem;
+}
+
+.data-status-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.data-status-text {
+  font-size: 0.9rem;
+  color: var(--color-gray-700);
+}

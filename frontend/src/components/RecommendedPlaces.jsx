@@ -48,6 +48,28 @@ const RecommendedPlaces = () => {
         )}
         
         <div className="recommendation-summary">
+          {/* 추천 범위 표시 (추가된 부분) */}
+          <div className="recommendation-scope">
+            {globalRecommendations.length > 0 ? (
+              <div className="global-recommendation-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                <span>서울 전역에서 찾은 추천 장소입니다 ({dataCollectionStatus.loaded}/{dataCollectionStatus.total} 지역 데이터 기반)</span>
+              </div>
+            ) : (
+              <div className="local-recommendation-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>현재 선택한 지역 주변에서만 찾은 추천입니다</span>
+              </div>
+            )}
+          </div>
+          
           <div className="preference-summary">
             <h4>현재 설정된 선호도:</h4>
             <ul>
