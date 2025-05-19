@@ -220,6 +220,15 @@ const PlaceDetail = () => {
       <div className="last-updated">
         <small>마지막 업데이트: {selectedPlace.updatedAt}</small>
       </div>
+
+      {/* 예측 데이터 없음 안내 메시지 */}
+      {!hasForecast && (
+        <div className="forecast-unavailable">
+          <h3>시간대별 예측 데이터 미제공</h3>
+          <p>이 장소는 현재 시간대별 예측 데이터를 제공하지 않습니다.</p>
+          <p>서울시 데이터에 따르면 이 장소에 대한 미래 혼잡도 예측이 제공되지 않습니다.</p>
+        </div>
+      )}
       
       {/* 예측 차트 (시각화 개선) */}
       {hasForecast && (

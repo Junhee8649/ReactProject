@@ -1749,3 +1749,23 @@ img.lazy-load {
 img.lazy-load.loaded {
   opacity: 1;
 }
+
+.forecast-unavailable {
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.forecast-unavailable h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  color: #4b5563;
+}
+
+.forecast-unavailable p {
+  margin: 0.5rem 0;
+  color: #6b7280;
+}
