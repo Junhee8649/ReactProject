@@ -41,8 +41,8 @@ const RecommendedPlaces = () => {
           <div className="recommendation-data-status">
             <div className="data-status-icon">ℹ️</div>
             <div className="data-status-text">
-              현재 {dataCollectionStatus.loaded}/{dataCollectionStatus.total} 지역의 데이터가 수집되었습니다.
-              데이터 수집이 완료되면 더 정확한 추천이 제공됩니다.
+              현재 {dataCollectionStatus.loaded}개 지역의 데이터가 수집되었습니다.
+              데이터 수집이 진행될수록 더 정확한 추천이 제공됩니다.
             </div>
           </div>
         )}
@@ -57,7 +57,7 @@ const RecommendedPlaces = () => {
                   <line x1="2" y1="12" x2="22" y2="12"></line>
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                 </svg>
-                <span>서울 전역에서 찾은 추천 장소입니다 ({dataCollectionStatus.loaded}/{dataCollectionStatus.total} 지역 데이터 기반)</span>
+                <span>서울 전역에서 찾은 추천 장소입니다 ({dataCollectionStatus.loaded}개 지역 데이터 기반)</span>
               </div>
             ) : (
               <div className="local-recommendation-badge">
