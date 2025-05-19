@@ -293,41 +293,27 @@ function PopulationMap() {
   const visibleMarkers = useMemo(() => {
     if (!filteredData) return [];
     
+    // 선택된 장소가 있을 때는 로딩 표시 대신 즉시 보여주기
+    if (selectedPlace && isLoading) {
+      return [selectedPlace];
+    }
+    
     // 줌 아웃 상태일 때 마커 수 제한
     if (mapZoom < 13) {
-      // 선택된 장소와 중요 장소만 표시
+      // 핵심 장소만 표시
       return filteredData.filter(place => 
-        place.id === selectedPlace?.id || 
         importantAreas.includes(place.name)
-      );
+      ).slice(0, 10);
     }
     
-    // 중간 줌 레벨에서는 더 많은 장소를 표시하지만 여전히 필터링
+    // 중간 줌 레벨에서 더 많은 장소 표시
     if (mapZoom < 15) {
-      // 최대 30개 장소 표시, 혼잡도 기준으로 우선순위 지정
-      return [...filteredData]
-        .sort((a, b) => {
-          // 첫 번째 우선순위: 선택된 장소
-          if (a.id === selectedPlace?.id) return -1;
-          if (b.id === selectedPlace?.id) return 1;
-          
-          // 두 번째 우선순위: 혼잡도 수준
-          const congestionOrder = {
-            '매우 붐빔': 5,
-            '붐빔': 4,
-            '약간 붐빔': 3,
-            '보통': 2,
-            '여유': 1
-          };
-          
-          return congestionOrder[b.congestionLevel] - congestionOrder[a.congestionLevel];
-        })
-        .slice(0, 30);
+      return filteredData.slice(0, 25);
     }
     
-    // 높은 줌 레벨에서는 모든 장소 표시
+    // 이미 로드된 데이터만 표시 (더 많은 데이터는 백그라운드에서 로드)
     return filteredData;
-  }, [filteredData, selectedPlace, mapZoom]);
+  }, [filteredData, selectedPlace, isLoading, mapZoom]);
 
   // 로딩 상태 처리
   if (isLoading && !filteredData) {
