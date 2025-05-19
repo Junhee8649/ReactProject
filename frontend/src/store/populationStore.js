@@ -107,11 +107,14 @@ const cacheUtils = {
     }
   },
   
-  // 지역 데이터 로드
   loadAreaData: (areaId) => {
     try {
+      console.log(`캐시 확인: ${areaId}`);
       const cached = localStorage.getItem(`area_${areaId}`);
-      if (!cached) return null;
+      if (!cached) {
+        console.log(`캐시 없음: ${areaId}`);
+        return null;
+      }
       
       const cacheItem = JSON.parse(cached);
       const now = Date.now();
@@ -121,13 +124,30 @@ const cacheUtils = {
       
       // 캐시 유효성 검사
       if (cacheItem.version !== CACHE_VERSION || now - cacheItem.timestamp > expiry) {
+        console.log(`캐시 만료됨: ${areaId} (version: ${cacheItem.version}, age: ${(now - cacheItem.timestamp) / 1000 / 60}분)`);
         localStorage.removeItem(`area_${areaId}`);
         return null;
       }
       
+      // 캐시된 데이터가 올바른 구조인지 확인
+      if (!cacheItem.data || !cacheItem.data.places || !Array.isArray(cacheItem.data.places)) {
+        console.log(`캐시 데이터 구조 오류: ${areaId}`);
+        localStorage.removeItem(`area_${areaId}`);
+        return null;
+      }
+      
+      console.log(`유효한 캐시 발견: ${areaId} (${cacheItem.data.places.length}개 장소 포함)`);
       return cacheItem.data;
     } catch (error) {
-      console.error('Cache load error:', error);
+      console.error(`캐시 로드 중 오류 (${areaId}):`, error);
+      
+      // 오류 발생 시 캐시 항목 제거
+      try {
+        localStorage.removeItem(`area_${areaId}`);
+      } catch (e) {
+        // 제거 시도 중 오류 무시
+      }
+      
       return null;
     }
   },
@@ -137,17 +157,25 @@ const cacheUtils = {
     try {
       const cachedAreas = JSON.parse(localStorage.getItem('cached_areas') || '[]');
       const allData = [];
+      let loadedAreas = 0;
+      let failedAreas = 0;
+      
+      console.log(`${cachedAreas.length}개 캐시된 지역에서 데이터 로드 중...`);
       
       cachedAreas.forEach(areaId => {
         const data = cacheUtils.loadAreaData(areaId);
-        if (data && data.places) {
+        if (data && data.places && Array.isArray(data.places)) {
           allData.push(...data.places);
+          loadedAreas++;
+        } else {
+          failedAreas++;
         }
       });
       
+      console.log(`캐시된 데이터 로드 완료: ${loadedAreas}개 지역 성공, ${failedAreas}개 지역 실패, 총 ${allData.length}개 장소`);
       return allData;
     } catch (error) {
-      console.error('Load all cached error:', error);
+      console.error('캐시된 데이터 전체 로드 중 오류:', error);
       return [];
     }
   },
@@ -558,13 +586,25 @@ const usePopulationStore = create(
       },
       
       selectArea: (areaId) => {
+        console.log(`지역 선택: ${areaId}`);
+        
         const { availableAreas, selectedArea } = get();
         
+        // 이미 같은 지역이 선택되어 있는지 확인
         const isReselectingSameArea = selectedArea === areaId && areaId !== null;
         
+        // 지역 객체 찾기
         const selectedAreaObj = areaId ? 
           availableAreas.find(a => a.id === areaId) : null;
         
+        if (selectedAreaObj) {
+          console.log(`선택된 지역 객체:`, selectedAreaObj);
+        } else if (areaId) {
+          console.warn(`해당하는 지역 객체를 찾을 수 없음: ${areaId}`);
+          return; // 유효한 지역이 없으면 여기서 종료
+        }
+        
+        // 상태 업데이트
         set({ 
           selectedArea: selectedAreaObj ? selectedAreaObj.id : null,
           searchText: '',
@@ -573,171 +613,211 @@ const usePopulationStore = create(
           optimalVisitTime: null // 지역 변경 시 최적 방문 시간 초기화
         });
         
+        // 지역 객체가 있거나 동일 지역 재선택인 경우에만 데이터 요청
         if (selectedAreaObj || isReselectingSameArea) {
-          get().fetchData(null, isReselectingSameArea);
+          // 요청할 지역 ID 결정 (객체가 있으면 객체 ID 사용, 없으면 현재 선택된 지역 ID 사용)
+          const areaIdToFetch = selectedAreaObj ? selectedAreaObj.id : selectedArea;
+          console.log(`지역 데이터 요청: ${areaIdToFetch}${isReselectingSameArea ? " (동일 지역 재요청)" : ""}`);
+          
+          // 명시적으로 지역 ID를 전달하여 데이터 요청
+          get().fetchData(areaIdToFetch, isReselectingSameArea);
         }
       },
       
-      // 데이터 가져오기 (큐 시스템 적용)
       fetchData: async (directAreaName = null, forceRefresh = false) => {
-        const state = get();
+        // 상태 설정 - 로딩 시작, 에러 초기화
+        set({ isLoading: true, error: null });
         
-        // 우선순위 결정
-        const priority = directAreaName || state.selectedArea || forceRefresh 
-          ? 'high' // 사용자가 직접 요청
-          : 'normal'; // 백그라운드 갱신
+        try {
+          // 요청할 지역 결정
+          const { selectedArea } = get();
           
-        // 요청 함수 생성
-        const requestFn = async () => {
-          set({ isLoading: true, error: null });
-          try {
-            const { selectedArea } = get();
+          let area = directAreaName || (selectedArea ? selectedArea : null);
+          
+          // 기본값 설정
+          if (!area) {
+            area = '강남 MICE 관광특구';
+            console.log(`지역이 지정되지 않아 기본값 사용: ${area}`);
+          }
+          
+          // 지역명 매핑 테이블
+          const fallbackMap = {
+            // 기존 매핑
+            '동대문 시장': '동대문 관광특구',
+            '남대문 시장': '남대문시장',
+            '광장 시장': '광장(전통)시장',
+            '홍대입구역': '홍대입구역(2호선)',
+            '홍대입구': '홍대입구역(2호선)',
+            '홍대역': '홍대입구역(2호선)',
             
-            let area = directAreaName || (selectedArea ? selectedArea : null);
+            // 추가 매핑 - 관광특구
+            '강남': '강남 MICE 관광특구',
+            '강남구': '강남 MICE 관광특구',
+            '동대문': '동대문 관광특구',
+            '동대문역': '동대문역',
+            '명동': '명동 관광특구',
+            '이태원': '이태원 관광특구',
+            '홍대': '홍대 관광특구',
+            '홍익대': '홍대 관광특구',
+            '종로': '종로·청계 관광특구',
+            '청계': '종로·청계 관광특구',
+            '잠실': '잠실 관광특구',
             
-            const fallbackMap = {
-              '동대문 시장': '동대문 관광특구',
-              '남대문 시장': '남대문시장',
-              '광장 시장': '광장(전통)시장',
-              '홍대입구역': '홍대입구역(2호선)',
-              '홍대입구': '홍대입구역(2호선)',
-              '홍대역': '홍대입구역(2호선)',
-            };
+            // 고궁·문화유산
+            '경복궁': '경복궁',
+            '광화문·덕수궁': '광화문·덕수궁',
+            '광화문': '광화문·덕수궁',
+            '덕수궁': '광화문·덕수궁',
+            '보신각': '보신각',
+            '서울 암사동 유적': '서울 암사동 유적',
+            '암사동': '서울 암사동 유적',
+            '창덕궁·종묘': '창덕궁·종묘',
+            '창덕궁': '창덕궁·종묘',
+            '종묘': '창덕궁·종묘',
             
-            if (area && fallbackMap[area]) {
-              console.log(`Using fallback mapping: ${area} -> ${fallbackMap[area]}`);
-              area = fallbackMap[area];
-            }
+            // 역삼역 및 기타 역 추가
+            '역삼역': '역삼역',
+            '역삼': '역삼역',
+            '가산디지털단지역': '가산디지털단지역',
+            '가산디지털단지': '가산디지털단지역',
+            '강남역': '강남역',
+            '건대입구역': '건대입구역',
+            '건대입구': '건대입구역',
+            '건대': '건대입구역',
             
-            // 기본값 설정
-            if (!area) {
-              area = '강남 MICE 관광특구';
-            }
-            
-            // 캐시 확인 (강제 새로고침이 아닌 경우)
-            if (!forceRefresh) {
-              const cachedData = cacheUtils.loadAreaData(area);
-              if (cachedData) {
-                console.log(`Using cached data for ${area}`);
-                set({ 
-                  populationData: cachedData,
-                  filteredData: cachedData.places, 
-                  lastUpdated: new Date(cachedData.timestamp || Date.now()),
-                  isLoading: false 
-                });
-                
-                // 최적 방문 시간 계산
-                if (cachedData.places && cachedData.places.length > 0) {
-                  const place = cachedData.places[0];
-                  if (place.hasForecast && Array.isArray(place.FCST_PPLTN)) {
-                    get().calculateOptimalVisitTime(place);
-                  }
-                }
-                
-                // 필터 적용
-                const { selectedAgeGroup } = get();
-                if (selectedAgeGroup !== 'all') {
-                  get().filterByAgeGroup(selectedAgeGroup);
-                }
-                
-                return;
-              }
-            }
-            
-            // API 호출 준비
-            let url = '/api/population';
-            if (area) {
-              url = `${url}?area=${encodeURIComponent(area)}`;
-            }
-            
-            if (forceRefresh) {
-              const timestamp = new Date().getTime();
-              url = `${url}${url.includes('?') ? '&' : '?'}t=${timestamp}`;
-            }
-            
-            console.log(`Fetching population data from: ${url} (forceRefresh: ${forceRefresh})`);
-            
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-              if (response.status === 404 && directAreaName && !directAreaName.includes('관광특구')) {
-                if (directAreaName.includes('동대문')) {
-                  console.log("Trying with '동대문 관광특구' instead");
-                  return get().fetchData('동대문 관광특구');
-                } else if (directAreaName.includes('명동')) {
-                  console.log("Trying with '명동 관광특구' instead");
-                  return get().fetchData('명동 관광특구');
-                } else if (directAreaName.includes('강남')) {
-                  console.log("Trying with '강남 MICE 관광특구' instead");
-                  return get().fetchData('강남 MICE 관광특구');
+            // 발달상권
+            '가락시장': '가락시장',
+            '가로수길': '가로수길',
+            'DDP': 'DDP(동대문디자인플라자)'
+          };
+          
+          if (area && fallbackMap[area]) {
+            console.log(`매핑 적용: ${area} -> ${fallbackMap[area]}`);
+            area = fallbackMap[area];
+          }
+          
+          // 캐시 확인 (강제 새로고침이 아닌 경우)
+          if (!forceRefresh) {
+            const cachedData = cacheUtils.loadAreaData(area);
+            if (cachedData) {
+              console.log(`캐시된 데이터 사용: ${area}`);
+              set({ 
+                populationData: cachedData,
+                filteredData: cachedData.places, 
+                lastUpdated: new Date(cachedData.timestamp || Date.now()),
+                isLoading: false 
+              });
+              
+              // 최적 방문 시간 계산
+              if (cachedData.places && cachedData.places.length > 0) {
+                const place = cachedData.places[0];
+                if (place.hasForecast && Array.isArray(place.FCST_PPLTN)) {
+                  get().calculateOptimalVisitTime(place);
                 }
               }
               
-              const errorData = await response.json().catch(() => ({}));
-              throw new Error(errorData.message || `HTTP error: ${response.status}`);
+              // 필터 적용
+              const { selectedAgeGroup } = get();
+              if (selectedAgeGroup !== 'all') {
+                get().filterByAgeGroup(selectedAgeGroup);
+              }
+              
+              return;
             }
-            
-            const data = await response.json();
-            data.timestamp = Date.now(); // 타임스탬프 추가
-            console.log("Population data received:", data);
-            
-            // 캐시에 데이터 저장
-            cacheUtils.saveAreaData(area, data);
-            localStorage.setItem('last_cache_update', new Date().toISOString());
-            
-            // 캐시 상태 업데이트
-            const cacheStatus = cacheUtils.getCacheStatus();
-            const dataCollectionStatus = get().dataCollectionStatus;
-            dataCollectionStatus.loaded = Math.min(cacheStatus.areaCount, importantAreas.length);
-            
-            // 상태 업데이트
-            set({ 
-              populationData: data,
-              filteredData: data.places, 
-              lastUpdated: new Date(),
-              isLoading: false,
-              cacheStatus,
-              dataCollectionStatus
-            });
-            
-            // 캐시된 전체 데이터 업데이트
-            const cachedData = cacheUtils.loadAllCachedAreas();
-            set({ cachedAllAreasData: cachedData });
-            
-            // 예측 데이터가 있는 경우, 최적 방문 시간 계산
-            if (data.places && data.places.length > 0) {
-              const place = data.places[0];
-              if (place.hasForecast && Array.isArray(place.FCST_PPLTN)) {
-                get().calculateOptimalVisitTime(place);
+          }
+          
+          // API 요청 URL 생성
+          let url = `/api/population?area=${encodeURIComponent(area)}`;
+          
+          if (forceRefresh) {
+            const timestamp = new Date().getTime();
+            url = `${url}${url.includes('?') ? '&' : '?'}t=${timestamp}`;
+          }
+          
+          console.log(`API 요청: ${url}`);
+          
+          // API 요청
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            if (response.status === 404 && directAreaName && !directAreaName.includes('관광특구')) {
+              // 404 오류 시 관광특구 시도
+              if (directAreaName.includes('동대문')) {
+                console.log("동대문 관광특구로 다시 시도합니다");
+                return get().fetchData('동대문 관광특구');
+              } else if (directAreaName.includes('명동')) {
+                console.log("명동 관광특구로 다시 시도합니다");
+                return get().fetchData('명동 관광특구');
+              } else if (directAreaName.includes('강남')) {
+                console.log("강남 MICE 관광특구로 다시 시도합니다");
+                return get().fetchData('강남 MICE 관광특구');
+              } else if (directAreaName.includes('홍대')) {
+                console.log("홍대 관광특구로 다시 시도합니다");
+                return get().fetchData('홍대 관광특구');
               }
             }
             
-            // 선택된 나이대 필터 적용
-            const { selectedAgeGroup } = get();
-            if (selectedAgeGroup !== 'all') {
-              get().filterByAgeGroup(selectedAgeGroup);
-            }
-            
-            // 전역 추천 업데이트
-            get().calculateGlobalRecommendations();
-            // 현재 지역 추천 계산
-            get().calculateRecommendations();
-            
-          } catch (error) {
-            console.error('Error fetching population data:', error);
-            set({ 
-              error: '데이터를 불러오는 중 오류가 발생했습니다: ' + error.message, 
-              isLoading: false 
-            });
-            
-            if (directAreaName) {
-              get().setSearchFeedback(`"${directAreaName}" 데이터를 찾을 수 없습니다.`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          data.timestamp = Date.now();
+          console.log("Population data received:", data);
+          
+          // 캐시에 데이터 저장
+          cacheUtils.saveAreaData(area, data);
+          localStorage.setItem('last_cache_update', new Date().toISOString());
+          
+          // 캐시 상태 업데이트
+          const cacheStatus = cacheUtils.getCacheStatus();
+          const dataCollectionStatus = get().dataCollectionStatus;
+          dataCollectionStatus.loaded = Math.min(cacheStatus.areaCount, importantAreas.length);
+          
+          // 상태 업데이트
+          set({ 
+            populationData: data,
+            filteredData: data.places, 
+            lastUpdated: new Date(),
+            isLoading: false,
+            cacheStatus,
+            dataCollectionStatus
+          });
+          
+          // 캐시된 전체 데이터 업데이트
+          const cachedData = cacheUtils.loadAllCachedAreas();
+          set({ cachedAllAreasData: cachedData });
+          
+          // 예측 데이터가 있는 경우, 최적 방문 시간 계산
+          if (data.places && data.places.length > 0) {
+            const place = data.places[0];
+            if (place.hasForecast && Array.isArray(place.FCST_PPLTN)) {
+              get().calculateOptimalVisitTime(place);
             }
           }
-        };
-        
-        // 적절한 우선순위로 요청 큐에 추가
-        state.queueRequest(requestFn, priority);
+          
+          // 선택된 나이대 필터 적용
+          const { selectedAgeGroup } = get();
+          if (selectedAgeGroup !== 'all') {
+            get().filterByAgeGroup(selectedAgeGroup);
+          }
+          
+          // 전역 추천 업데이트
+          get().calculateGlobalRecommendations();
+          // 현재 지역 추천 계산
+          get().calculateRecommendations();
+          
+        } catch (error) {
+          console.error('Error fetching population data:', error);
+          set({ 
+            error: '데이터를 불러오는 중 오류가 발생했습니다: ' + error.message, 
+            isLoading: false 
+          });
+          
+          if (directAreaName) {
+            get().setSearchFeedback(`"${directAreaName}" 데이터를 찾을 수 없습니다.`);
+          }
+        }
       },
       
       // 데이터 수집 일시 중지/재개 토글
@@ -773,7 +853,10 @@ const usePopulationStore = create(
         const { dataCollectionStatus, pauseDataCollection } = get();
         
         // 이미 진행 중이거나 일시 중지된 경우 건너뛰기
-        if (dataCollectionStatus.inProgress || pauseDataCollection) return;
+        if (dataCollectionStatus.inProgress || pauseDataCollection) {
+          console.log(pauseDataCollection ? "데이터 수집이 일시 중지 상태입니다" : "이미 진행 중입니다");
+          return;
+        }
         
         set({ 
           dataCollectionStatus: {
@@ -789,7 +872,7 @@ const usePopulationStore = create(
         // 아직 캐시되지 않은 중요 지역 필터링
         const areasToFetch = importantAreas
           .filter(area => !cachedAreas.includes(area))
-          .slice(0, 1); // 한 번에 최대 1개만 가져오기 (3에서 변경)
+          .slice(0, 2); // 한 번에 최대 2개만 가져오기 (수정: 이전에는 1개만 가져왔음)
         
         if (areasToFetch.length === 0) {
           console.log('모든 중요 지역이 이미 캐시되었습니다.');
@@ -803,7 +886,7 @@ const usePopulationStore = create(
           return;
         }
         
-        console.log(`${areasToFetch.length}개 지역의 데이터 수집 시작`);
+        console.log(`${areasToFetch.length}개 지역의 데이터 수집 시작: ${areasToFetch.join(', ')}`);
         
         // 작은 배치로 나누어 처리
         for (const area of areasToFetch) {
@@ -818,36 +901,42 @@ const usePopulationStore = create(
             
             // 우선순위를 'low'로 설정하여 큐잉
             const requestFn = async () => {
-              const url = `/api/population?area=${encodeURIComponent(area)}`;
-              const response = await fetch(url);
-              
-              if (!response.ok) {
-                console.warn(`${area} 가져오기 실패: ${response.status}`);
-                return;
-              }
-              
-              const data = await response.json();
-              data.timestamp = Date.now();
-              
-              // 캐시에 저장
-              cacheUtils.saveAreaData(area, data);
-              localStorage.setItem('last_cache_update', new Date().toISOString());
-              
-              // 상태 업데이트
-              const updatedCacheStatus = cacheUtils.getCacheStatus();
-              const loaded = Math.min(updatedCacheStatus.areaCount, importantAreas.length);
-              
-              set(state => ({ 
-                cacheStatus: updatedCacheStatus,
-                dataCollectionStatus: {
-                  ...state.dataCollectionStatus,
-                  loaded
+              try {
+                const url = `/api/population?area=${encodeURIComponent(area)}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                  console.warn(`${area} 가져오기 실패: ${response.status}`);
+                  return;
                 }
-              }));
-              
-              // 캐시된 전체 데이터 업데이트
-              const cachedData = cacheUtils.loadAllCachedAreas();
-              set({ cachedAllAreasData: cachedData });
+                
+                const data = await response.json();
+                data.timestamp = Date.now();
+                
+                // 캐시에 저장
+                cacheUtils.saveAreaData(area, data);
+                localStorage.setItem('last_cache_update', new Date().toISOString());
+                
+                // 상태 업데이트
+                const updatedCacheStatus = cacheUtils.getCacheStatus();
+                const loaded = Math.min(updatedCacheStatus.areaCount, importantAreas.length);
+                
+                set(state => ({ 
+                  cacheStatus: updatedCacheStatus,
+                  dataCollectionStatus: {
+                    ...state.dataCollectionStatus,
+                    loaded
+                  }
+                }));
+                
+                // 캐시된 전체 데이터 업데이트
+                const cachedData = cacheUtils.loadAllCachedAreas();
+                set({ cachedAllAreasData: cachedData });
+                
+                console.log(`${area} 데이터 수집 완료 (${loaded}/${importantAreas.length})`);
+              } catch (error) {
+                console.error(`${area} 데이터 로드 중 오류:`, error);
+              }
             };
             
             get().queueRequest(requestFn, 'low');
@@ -860,6 +949,7 @@ const usePopulationStore = create(
         setTimeout(() => {
           // 일시 중지 상태가 아니고 아직 완료되지 않은 경우
           if (!get().pauseDataCollection && get().dataCollectionStatus.loaded < importantAreas.length) {
+            // 다음 배치 처리를 위한 재귀 호출
             get().startDataCollection();
           } else {
             set(state => ({ 
@@ -869,7 +959,7 @@ const usePopulationStore = create(
               }
             }));
           }
-        }, 30000); // 10초에서 30초로 변경
+        }, 30000); // 30초 지연 (수정: 이전에는 10초)
       },
       
       filterByAgeGroup: (ageGroup) => {
@@ -1077,7 +1167,106 @@ const usePopulationStore = create(
       
       // 전역 추천 계산 (최적화 적용)
       calculateGlobalRecommendations: () => {
-        debouncedCalculations.globalRecommendations(get());
+        // 기존 코드를 아래 코드로 대체:
+        console.log("전역 추천 계산 시작");
+        
+        // 이미 계산 중이면 건너뛰기
+        if (get().isCalculatingRecommendations) {
+          console.log("이미 추천 계산 중입니다");
+          return;
+        }
+        
+        set({ isCalculatingRecommendations: true });
+        
+        // 처리에 약간의 지연 추가하여 UI 블로킹 방지
+        setTimeout(() => {
+          const { cachedAllAreasData, userPreferences } = get();
+          
+          if (!cachedAllAreasData || cachedAllAreasData.length === 0) {
+            console.log("캐시된 데이터 없음, 추천 계산 중단");
+            set({ globalRecommendations: [], isCalculatingRecommendations: false });
+            return;
+          }
+          
+          // 중복 제거 (같은 id의 장소는 가장 최근 데이터만 사용)
+          const uniquePlaces = [];
+          const placeIds = new Set();
+          
+          cachedAllAreasData.forEach(place => {
+            if (!placeIds.has(place.id)) {
+              placeIds.add(place.id);
+              uniquePlaces.push(place);
+            }
+          });
+          
+          console.log(`${uniquePlaces.length}개의 장소로 추천 계산`);
+          
+          // 작은 청크로 처리하여 UI 블로킹 방지
+          const CHUNK_SIZE = 30;
+          const places = [...uniquePlaces];
+          const results = [];
+          
+          const processNextChunk = () => {
+            if (places.length === 0) {
+              // 완료, 결과로 상태 업데이트
+              const topRecommendations = results
+                .sort((a, b) => b.recommendScore - a.recommendScore)
+                .slice(0, 5);
+                
+              console.log(`추천 계산 완료: ${topRecommendations.length}개 항목`);
+              
+              set({ 
+                globalRecommendations: topRecommendations,
+                isCalculatingRecommendations: false
+              });
+              return;
+            }
+            
+            // 다음 청크 처리
+            const chunk = places.splice(0, Math.min(CHUNK_SIZE, places.length));
+            
+            // 이 청크에 대한 점수 계산
+            const scoredChunk = chunk.map(place => {
+              // 기본 점수
+              let score = 50;
+              
+              // 연령대별 점수 (0-30점)
+              const ageGroupRate = place.ageGroups[userPreferences.preferredAgeGroup] || 0;
+              score += ageGroupRate * 1.5;
+              
+              // 혼잡도 점수 (0-20점)
+              const congestionScores = {
+                '여유': userPreferences.preferQuiet ? 20 : 5,
+                '보통': userPreferences.preferQuiet ? 15 : 10,
+                '약간 붐빔': 10,
+                '붐빔': userPreferences.preferQuiet ? 5 : 15,
+                '매우 붐빔': userPreferences.preferQuiet ? 0 : 20
+              };
+              score += congestionScores[place.congestionLevel] || 10;
+              
+              // 붐비는 곳 회피 설정 (-10점)
+              if (userPreferences.avoidCrowds && 
+                  (place.congestionLevel === '붐빔' || place.congestionLevel === '매우 붐빔')) {
+                score -= 10;
+              }
+              
+              return {
+                ...place,
+                recommendScore: score,
+                matchReason: getMatchReason(place, userPreferences)
+              };
+            });
+            
+            // 결과에 추가
+            results.push(...scoredChunk);
+            
+            // 작은 지연으로 다음 청크 예약
+            setTimeout(processNextChunk, 10);
+          };
+          
+          // 처리 시작
+          processNextChunk();
+        }, 100);
       },
       
       // 추천 화면 토글
