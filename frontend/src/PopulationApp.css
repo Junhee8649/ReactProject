@@ -1839,3 +1839,32 @@ img.lazy-load.loaded {
   font-size: 0.9rem;
   color: var(--color-gray-700);
 }
+
+/* 카테고리 필터링 관련 스타일 */
+.category-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.category-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background-color: var(--color-gray-100);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.category-checkbox:hover {
+  background-color: var(--color-gray-200);
+}
+
+.category-checkbox input:checked + span {
+  color: var(--color-primary);
+  font-weight: 500;
+}
