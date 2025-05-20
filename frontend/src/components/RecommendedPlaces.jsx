@@ -73,9 +73,18 @@ const RecommendedPlaces = () => {
           <div className="preference-summary">
             <h4>현재 설정된 선호도:</h4>
             <ul>
+              {/* 기존 코드를 다음으로 변경 */}
               <li>장소 분위기: {userPreferences.preferQuiet ? '조용한 곳' : '활기찬 곳'}</li>
+              <li>선호 밀집도: {userPreferences.preferLowDensity ? '여유로운 곳' : '북적이는 곳'}</li>
               <li>선호 나이대: {userPreferences.preferredAgeGroup.replace('s', '대')}</li>
-              <li>혼잡한 곳 피하기: {userPreferences.avoidCrowds ? '예' : '아니오'}</li>
+              {userPreferences.categories && userPreferences.categories.length > 0 && (
+                <li>
+                  선호 카테고리: {userPreferences.categories.map(catId => {
+                    const category = areaCategories.find(c => c.id === catId);
+                    return category ? category.name : catId;
+                  }).join(', ')}
+                </li>
+              )}
             </ul>
           </div>
         </div>
