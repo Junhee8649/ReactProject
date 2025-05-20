@@ -14,7 +14,8 @@ const RecommendedPlaces = () => {
     dataCollectionStatus,
     isCollectingPreferredData, // 추가: 선호 카테고리 데이터 수집 중 상태
     preferredCategoriesDataStatus, // 추가: 선호 카테고리 데이터 수집 진행 상태
-    areaCategories
+    areaCategories,
+    cacheStatus  // 추가: 캐시 상태 정보 가져오기
   } = usePopulationStore();
   
   // 사용할 추천 목록 결정 (전역 추천이 있으면 우선 사용)
@@ -92,7 +93,7 @@ const RecommendedPlaces = () => {
                   <line x1="2" y1="12" x2="22" y2="12"></line>
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                 </svg>
-                <span>서울 전역에서 찾은 추천 장소입니다 ({dataCollectionStatus.loaded}개 지역 데이터 기반)</span>
+                <span>서울 전역에서 찾은 추천 장소입니다 ({cacheStatus.areaCount}개 지역 데이터 기반)</span>
               </div>
             ) : (
               <div className="local-recommendation-badge">
