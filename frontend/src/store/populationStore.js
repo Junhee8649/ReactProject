@@ -825,9 +825,21 @@ const usePopulationStore = create(
         const { dataCollectionStatus, pauseDataCollection } = get();
         
         // 이미 진행 중이거나 일시 중지된 경우 건너뛰기
-        if (dataCollectionStatus.inProgress || pauseDataCollection) {
-          console.log(pauseDataCollection ? "데이터 수집이 일시 중지 상태입니다" : "이미 진행 중입니다");
+        if (dataCollectionStatus.inProgress) {
+          console.log("이미 데이터 수집이 진행 중입니다");
           return;
+        }
+        
+        // 일시 중지 상태 확인 및 로그
+        if (pauseDataCollection) {
+          console.log("데이터 수집이 일시 중지 상태입니다");
+          // 추가: 추천 화면에서 시작한 경우 일시 중지 해제
+          if (get().showRecommendations) {
+            console.log("추천 화면에서 시작하여 일시 중지 상태를 해제합니다");
+            set({ pauseDataCollection: false });
+          } else {
+            return; // 일반적인 경우 일시 중지 상태면 종료
+          }
         }
         
         set({ 
@@ -1121,7 +1133,9 @@ const usePopulationStore = create(
             userPreferences: {
               ...state.userPreferences,
               categories
-            }
+            },
+            // 추가: 카테고리 변경 시 추천 목록 초기화
+            globalRecommendations: []
           };
         });
         
@@ -1233,9 +1247,9 @@ const usePopulationStore = create(
       calculateGlobalRecommendations: () => {
         console.log("전역 추천 계산 시작");
         
-        // 이미 계산 중이면 건너뛰기
+        // 이미 계산 중이면 건너뛰기 - 이 부분은 유지하되 상태를 명확히 추적
         if (get().isCalculatingRecommendations) {
-          console.log("이미 추천 계산 중입니다");
+          console.log("이미 추천 계산 중입니다. 시간: " + new Date().toISOString());
           return;
         }
         
@@ -1250,6 +1264,8 @@ const usePopulationStore = create(
             set({ globalRecommendations: [], isCalculatingRecommendations: false });
             return;
           }
+          
+          console.log(`${cachedAllAreasData.length}개의 장소로 추천 계산`);
           
           // 추가: 선호도가 없거나 최소한인 경우 (카테고리 선택 없음)
           const hasMinimalPreferences = !userPreferences.categories || userPreferences.categories.length === 0;
@@ -1270,8 +1286,6 @@ const usePopulationStore = create(
             }
           });
           
-          console.log(`${uniquePlaces.length}개의 장소로 추천 계산`);
-          
           // 작은 청크로 처리하여 UI 블로킹 방지
           const CHUNK_SIZE = 30;
           const places = [...uniquePlaces];
@@ -1280,9 +1294,33 @@ const usePopulationStore = create(
           const processNextChunk = () => {
             if (places.length === 0) {
               // 완료, 결과로 상태 업데이트
-              const topRecommendations = results
-                .sort((a, b) => b.recommendScore - a.recommendScore)
-                .slice(0, 5);
+              let topRecommendations = results
+                .sort((a, b) => b.recommendScore - a.recommendScore);
+                
+              // 선호 카테고리가 있을 경우, 해당 카테고리 장소만 우선 필터링
+              if (!hasMinimalPreferences && userPreferences.categories.length > 0) {
+                const preferredCategoryPlaces = topRecommendations.filter(place => 
+                  place.category && userPreferences.categories.includes(place.category)
+                );
+                
+                // 선호 카테고리 장소가 최소 3개 이상이면 해당 항목만 사용
+                if (preferredCategoryPlaces.length >= 3) {
+                  topRecommendations = preferredCategoryPlaces;
+                }
+                // 아니면 부족한 만큼 다른 높은 점수 장소로 채우기
+                else if (preferredCategoryPlaces.length > 0) {
+                  const otherPlaces = topRecommendations.filter(place => 
+                    !place.category || !userPreferences.categories.includes(place.category)
+                  );
+                  topRecommendations = [
+                    ...preferredCategoryPlaces,
+                    ...otherPlaces.slice(0, 5 - preferredCategoryPlaces.length)
+                  ];
+                }
+              }
+              
+              // 최종 추천 결과 (상위 5개)
+              topRecommendations = topRecommendations.slice(0, 5);
                 
               console.log(`추천 계산 완료: ${topRecommendations.length}개 항목`);
               
@@ -1396,13 +1434,20 @@ const usePopulationStore = create(
           return;
         }
         
-        // 선호 카테고리가 설정되어 있고 추천 목록이 비어있으면 선호 카테고리 데이터 수집
+        // 중요: 추천을 요청할 때 데이터 수집 일시 중지 상태를 해제
+        set({ pauseDataCollection: false });
+        
+        // 선호 카테고리가 설정되어 있으면 선호 카테고리 데이터 수집
+        // globalRecommendations 길이 체크 제거
         if (userPreferences.categories && 
-            userPreferences.categories.length > 0 && 
-            globalRecommendations.length === 0) {
+            userPreferences.categories.length > 0) {
           
           // 모달 먼저 표시 (데이터 수집 상태를 보여주기 위해)
-          set({ showRecommendations: true });
+          set({ 
+            showRecommendations: true, 
+            // 추가: 기존 추천 결과 초기화하여 새로 계산하도록
+            globalRecommendations: [] 
+          });
           
           // 선호 카테고리 데이터 수집 시작
           const isCompleted = await get().collectPreferredCategoryData();
@@ -1438,14 +1483,22 @@ const usePopulationStore = create(
       collectPreferredCategoryData: async () => {
         const { userPreferences, availableAreas } = get();
         
+        // 디버깅 로그 추가
+        console.log("선호 카테고리 데이터 수집 시작", {
+          categories: userPreferences.categories,
+          availableAreasCount: availableAreas.length
+        });
+        
         // 선호 카테고리가 없으면 일반 추천 데이터 수집만 진행
         if (!userPreferences.categories || userPreferences.categories.length === 0) {
           get().startDataCollection();
           return false;
         }
         
+        // 중요: 데이터 수집 시작 시 일시 중지 상태 해제
         set({ 
           isCollectingPreferredData: true,
+          pauseDataCollection: false,
           preferredCategoriesDataStatus: {
             collecting: true,
             progress: 0,
@@ -1458,6 +1511,8 @@ const usePopulationStore = create(
         const preferredAreas = availableAreas.filter(area => 
           userPreferences.categories.includes(area.category)
         );
+        
+        console.log(`선호 카테고리 해당 지역 수: ${preferredAreas.length}개`);
         
         if (preferredAreas.length === 0) {
           console.log('선호 카테고리에 해당하는 지역이 없습니다.');
@@ -1478,13 +1533,24 @@ const usePopulationStore = create(
         const cachedAreas = cacheStatus.areaIds || [];
         
         // 아직 캐시되지 않은 선호 카테고리 지역 필터링
-        const areasToFetch = preferredAreas
+        let areasToFetch = preferredAreas
           .filter(area => !cachedAreas.includes(area.id))
           .map(area => area.id);
         
         // 이미 모든 선호 카테고리 데이터가 캐시되어 있는 경우
         if (areasToFetch.length === 0) {
-          console.log('모든 선호 카테고리 데이터가 이미 캐시되었습니다.');
+          console.log('모든 선호 카테고리 데이터가 이미 캐시되었습니다. 일부 데이터 갱신');
+          
+          // 최소 5개의 선호 카테고리 지역은 항상 새로 가져오도록 함
+          const areasToRefresh = preferredAreas
+            .slice(0, Math.min(5, preferredAreas.length))
+            .map(area => area.id);
+            
+          areasToFetch = areasToRefresh;
+        }
+        
+        // 수집할 지역이 없는 경우 종료
+        if (areasToFetch.length === 0) {
           set({ 
             isCollectingPreferredData: false,
             preferredCategoriesDataStatus: {
@@ -1522,6 +1588,7 @@ const usePopulationStore = create(
             try {
               // 일시 중지 상태 확인
               if (get().pauseDataCollection) {
+                console.log("데이터 수집이 일시 중지되어 중단합니다");
                 return;
               }
               
@@ -1565,6 +1632,12 @@ const usePopulationStore = create(
           
           // API 과부하 방지를 위한 지연
           await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // 중간에 일시 중지되었는지 확인하고 중단
+          if (get().pauseDataCollection) {
+            console.log("데이터 수집이 일시 중지되어 중단합니다");
+            break;
+          }
         }
         
         // 완료 상태 업데이트
