@@ -1868,3 +1868,34 @@ img.lazy-load.loaded {
   color: var(--color-primary);
   font-weight: 500;
 }
+
+.category-icon {
+  display: inline-flex;
+  margin-right: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.category-areas-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.category-areas-header strong {
+  font-size: 0.9rem;
+  color: var(--color-gray-800);
+}
+
+.category-areas-header small {
+  font-size: 0.8rem;
+  color: var(--color-gray-500);
+}
