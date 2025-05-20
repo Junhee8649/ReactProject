@@ -2075,3 +2075,56 @@ img.lazy-load.loaded {
     }
   }
 }
+
+/* 검색 관련 개선된 스타일 */
+.search-input-container {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 0.25rem; /* 검색창과의 간격 축소 */
+  box-shadow: var(--shadow-md);
+}
+
+.suggested-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.suggested-area-item {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-gray-50);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.suggested-area-item:hover {
+  background-color: var(--color-gray-100);
+}
+
+.suggestion-icon {
+  font-size: 1rem;
+}
+
+.no-results-content p {
+  margin: 0.5rem 0;
+  color: var(--color-gray-600);
+  font-size: 0.9rem;
+}
