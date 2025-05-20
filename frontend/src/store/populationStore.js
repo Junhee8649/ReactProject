@@ -317,6 +317,13 @@ const usePopulationStore = create(
       globalRecommendations: [],  // 모든 캐시된 지역 기반 추천 장소 목록
       showRecommendations: false, // 추천 화면 표시 여부
       isCalculatingRecommendations: false, // 추가: 계산 중 플래그
+      isCollectingPreferredData: false, // 추가: 선호 카테고리 데이터 수집 중 상태
+      preferredCategoriesDataStatus: {  // 추가: 선호 카테고리 데이터 수집 진행 상태
+        collecting: false,
+        progress: 0,
+        total: 0,
+        completed: false
+      },
       
       // 데이터 수집 관련 상태
       cachedAllAreasData: [],    // 캐시된 모든 지역 데이터
@@ -1367,25 +1374,216 @@ const usePopulationStore = create(
       },
       
       // 추천 화면 토글
-      toggleRecommendations: () => {
-        const { showRecommendations, recommendedPlaces, globalRecommendations } = get();
+      toggleRecommendations: async () => {
+        const { 
+          showRecommendations, 
+          recommendedPlaces, 
+          globalRecommendations, 
+          userPreferences, 
+          cachedAllAreasData,
+          isCollectingPreferredData
+        } = get();
         
-        // 추천 목록이 비어있으면 계산
-        if (!showRecommendations) {
-          if (globalRecommendations.length === 0 && recommendedPlaces.length === 0) {
-            get().calculateRecommendations();
-            
+        // 이미 표시 중이면 닫기만 수행
+        if (showRecommendations) {
+          set({ showRecommendations: false });
+          return;
+        }
+        
+        // 데이터 수집 중이면 그대로 모달 표시만
+        if (isCollectingPreferredData) {
+          set({ showRecommendations: true });
+          return;
+        }
+        
+        // 선호 카테고리가 설정되어 있고 추천 목록이 비어있으면 선호 카테고리 데이터 수집
+        if (userPreferences.categories && 
+            userPreferences.categories.length > 0 && 
+            globalRecommendations.length === 0) {
+          
+          // 모달 먼저 표시 (데이터 수집 상태를 보여주기 위해)
+          set({ showRecommendations: true });
+          
+          // 선호 카테고리 데이터 수집 시작
+          const isCompleted = await get().collectPreferredCategoryData();
+          
+          // 데이터 수집 완료 후 추천 계산
+          if (isCompleted) {
             // 전역 추천이 가능하면 계산
-            const { cachedAllAreasData } = get();
             if (cachedAllAreasData.length > 0) {
               get().calculateGlobalRecommendations();
+            } else {
+              get().calculateRecommendations();
             }
+          }
+          
+          return;
+        }
+        
+        // 기존 추천이 없는 경우 계산
+        if (globalRecommendations.length === 0 && recommendedPlaces.length === 0) {
+          get().calculateRecommendations();
+          
+          // 전역 추천이 가능하면 계산
+          if (cachedAllAreasData.length > 0) {
+            get().calculateGlobalRecommendations();
           }
         }
         
-        set(state => ({ showRecommendations: !state.showRecommendations }));
+        // 추천 모달 표시
+        set({ showRecommendations: true });
       },
       
+      // 선호 카테고리의 장소 데이터 우선 수집
+      collectPreferredCategoryData: async () => {
+        const { userPreferences, availableAreas } = get();
+        
+        // 선호 카테고리가 없으면 일반 추천 데이터 수집만 진행
+        if (!userPreferences.categories || userPreferences.categories.length === 0) {
+          get().startDataCollection();
+          return false;
+        }
+        
+        set({ 
+          isCollectingPreferredData: true,
+          preferredCategoriesDataStatus: {
+            collecting: true,
+            progress: 0,
+            total: 0,
+            completed: false
+          }
+        });
+        
+        // 선호 카테고리에 해당하는 지역 필터링
+        const preferredAreas = availableAreas.filter(area => 
+          userPreferences.categories.includes(area.category)
+        );
+        
+        if (preferredAreas.length === 0) {
+          console.log('선호 카테고리에 해당하는 지역이 없습니다.');
+          set({ 
+            isCollectingPreferredData: false,
+            preferredCategoriesDataStatus: {
+              collecting: false,
+              progress: 0,
+              total: 0,
+              completed: true
+            }
+          });
+          return false;
+        }
+        
+        // 캐시 상태 확인
+        const cacheStatus = cacheUtils.getCacheStatus();
+        const cachedAreas = cacheStatus.areaIds || [];
+        
+        // 아직 캐시되지 않은 선호 카테고리 지역 필터링
+        const areasToFetch = preferredAreas
+          .filter(area => !cachedAreas.includes(area.id))
+          .map(area => area.id);
+        
+        // 이미 모든 선호 카테고리 데이터가 캐시되어 있는 경우
+        if (areasToFetch.length === 0) {
+          console.log('모든 선호 카테고리 데이터가 이미 캐시되었습니다.');
+          set({ 
+            isCollectingPreferredData: false,
+            preferredCategoriesDataStatus: {
+              collecting: false,
+              progress: 100,
+              total: preferredAreas.length,
+              completed: true
+            }
+          });
+          return true;
+        }
+        
+        // 상태 업데이트
+        set({
+          preferredCategoriesDataStatus: {
+            collecting: true,
+            progress: preferredAreas.length - areasToFetch.length,
+            total: preferredAreas.length,
+            completed: false
+          }
+        });
+        
+        console.log(`${areasToFetch.length}개 선호 카테고리 지역의 데이터 수집 시작`);
+        
+        // 병렬 처리를 위한 배치 크기 설정 (과부하 방지를 위해 3개씩)
+        const BATCH_SIZE = 3;
+        let completedCount = preferredAreas.length - areasToFetch.length;
+        
+        // 배치 단위로 처리
+        for (let i = 0; i < areasToFetch.length; i += BATCH_SIZE) {
+          const batch = areasToFetch.slice(i, i + BATCH_SIZE);
+          
+          // 배치 내 요청을 병렬로 처리
+          await Promise.all(batch.map(async (areaId) => {
+            try {
+              // 일시 중지 상태 확인
+              if (get().pauseDataCollection) {
+                return;
+              }
+              
+              console.log(`선호 카테고리 ${areaId} 데이터 가져오는 중...`);
+              
+              const url = `/api/population?area=${encodeURIComponent(areaId)}`;
+              const response = await fetch(url);
+              
+              if (!response.ok) {
+                console.warn(`${areaId} 가져오기 실패: ${response.status}`);
+                return;
+              }
+              
+              const data = await response.json();
+              data.timestamp = Date.now();
+              
+              // 캐시에 저장
+              cacheUtils.saveAreaData(areaId, data);
+              localStorage.setItem('last_cache_update', new Date().toISOString());
+              
+              // 진행상황 업데이트
+              completedCount++;
+              set({
+                preferredCategoriesDataStatus: {
+                  collecting: true,
+                  progress: completedCount,
+                  total: preferredAreas.length,
+                  completed: false
+                }
+              });
+              
+              // 캐시된 전체 데이터 업데이트
+              const cachedData = cacheUtils.loadAllCachedAreas();
+              set({ cachedAllAreasData: cachedData });
+              
+              console.log(`선호 카테고리 ${areaId} 데이터 수집 완료 (${completedCount}/${preferredAreas.length})`);
+            } catch (error) {
+              console.error(`${areaId} 데이터 로드 중 오류:`, error);
+            }
+          }));
+          
+          // API 과부하 방지를 위한 지연
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // 완료 상태 업데이트
+        set({ 
+          isCollectingPreferredData: false,
+          preferredCategoriesDataStatus: {
+            collecting: false,
+            progress: completedCount,
+            total: preferredAreas.length,
+            completed: true
+          }
+        });
+        
+        // 글로벌 추천 다시 계산
+        get().calculateGlobalRecommendations();
+        
+        return true;
+      },
+
       // 자원 최적화 함수 추가
       optimizeResources: () => {
         const state = get();
