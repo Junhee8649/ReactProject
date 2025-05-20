@@ -217,18 +217,12 @@ function calculatePlaceScore(place, userPrefs) {
   const ageGroupRate = place.ageGroups[userPrefs.preferredAgeGroup] || 0;
   score += ageGroupRate * 1.5;
   
-  // 분위기 점수 (0-20점)
+  // 혼잡도 선호도 점수 (0-30점) - 분위기와 밀집도 통합
   const isQuietPlace = ['여유', '보통'].includes(place.congestionLevel);
+  // 더 강한 일치 보너스 (두 항목이 통합되었으므로)
   if ((userPrefs.preferQuiet && isQuietPlace) || 
       (!userPrefs.preferQuiet && !isQuietPlace)) {
-    score += 20;
-  }
-  
-  // 밀집도 점수 (0-20점)
-  const isLowDensity = ['여유', '보통'].includes(place.congestionLevel);
-  if ((userPrefs.preferLowDensity && isLowDensity) || 
-      (!userPrefs.preferLowDensity && !isLowDensity)) {
-    score += 20;
+    score += 30;
   }
   
   // 카테고리 점수 (0-30점)
