@@ -11,7 +11,8 @@ const RecommendedPlaces = () => {
     selectPlace,
     getCongestionColor,
     userPreferences,
-    dataCollectionStatus
+    dataCollectionStatus,
+    areaCategories // 이 부분이 누락되어 있었습니다
   } = usePopulationStore();
   
   // 사용할 추천 목록 결정 (전역 추천이 있으면 우선 사용)
@@ -91,6 +92,8 @@ const RecommendedPlaces = () => {
               {userPreferences.categories && userPreferences.categories.length > 0 && (
                 <li>
                   선호 카테고리: {userPreferences.categories.map(catId => {
+                    // areaCategories가 없거나 빈 배열일 경우를 대비한 안전 처리 추가
+                    if (!areaCategories || areaCategories.length === 0) return catId;
                     const category = areaCategories.find(c => c.id === catId);
                     return category ? category.name : catId;
                   }).join(', ')}
