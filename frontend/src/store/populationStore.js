@@ -1097,7 +1097,11 @@ const usePopulationStore = create(
       // 카테고리 선호도 토글 함수
       toggleCategoryPreference: (categoryId) => {
         set(state => {
-          const categories = [...state.userPreferences.categories];
+          // 수정: 배열이 undefined나 null인 경우 빈 배열로 초기화
+          const currentCategories = state.userPreferences.categories || [];
+          // 수정: 배열 복사 전 안전 확인
+          const categories = Array.isArray(currentCategories) ? [...currentCategories] : [];
+          
           const index = categories.indexOf(categoryId);
           
           if (index >= 0) {
