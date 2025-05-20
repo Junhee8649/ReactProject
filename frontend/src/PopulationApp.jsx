@@ -56,16 +56,8 @@ function PopulationApp() {
       }
     }, 3 * 60 * 1000);
     
-    // 백그라운드 데이터 수집 - 초기 로드 후 한 번만 실행
-    const collectionTimeout = setTimeout(() => {
-      if (!isLoading) {
-        startDataCollection();
-      }
-    }, 5000);
-    
     return () => {
       clearInterval(intervalId);
-      clearTimeout(collectionTimeout);
     };
   }, [fetchData, fetchAreas, startDataCollection, isLoading, storeOptimizeResources]);
   
