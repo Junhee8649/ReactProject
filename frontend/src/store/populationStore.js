@@ -593,8 +593,19 @@ const usePopulationStore = create(
           
           // 명시적으로 지역 ID를 전달하여 데이터 요청
           get().fetchData(areaIdToFetch, isReselectingSameArea);
-        }
-      },
+          
+          // 지도 영역으로 스크롤 - 이 부분 추가
+              setTimeout(() => {
+                const mapElement = document.querySelector('.map-container');
+                if (mapElement) {
+                  mapElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start'
+                  });
+                }
+              }, 300); // 데이터 로드 시작 후 약간의 지연 추가
+            }
+          },
       
       fetchData: async (directAreaName = null, forceRefresh = false) => {
         // 상태 설정 - 로딩 시작, 에러 초기화
