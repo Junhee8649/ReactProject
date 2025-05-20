@@ -61,10 +61,12 @@ const DataCollectionStatus = () => {
             ></div>
           </div>
           <div className="progress-text">
-            {dataCollectionStatus.loaded} / {dataCollectionStatus.total} 지역 로드됨
-            {dataCollectionStatus.loaded > 0 && globalRecommendations.length > 0 && (
-              <span className="progress-note"> (일부 추천 가능)</span>
-            )}
+            <span>{dataCollectionStatus.loaded} / {dataCollectionStatus.total} 핵심 지역 로드됨</span>
+            <span className="progress-info">
+              {dataCollectionStatus.loaded > 0 && globalRecommendations.length > 0 ? 
+                " (기본 추천 가능)" : 
+                " (총 120개 지역 중 핵심 지역 우선 로드 중)"}
+            </span>
           </div>
         </div>
       </div>
@@ -78,7 +80,10 @@ const DataCollectionStatus = () => {
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
         <polyline points="22 4 12 14.01 9 11.01"></polyline>
       </svg>
-      <span>모든 지역 데이터가 수집되었습니다. 정확한 추천이 가능합니다.</span>
+      <span>
+        핵심 지역 데이터 수집 완료 ({cacheStatus.areaCount}개/{120}개 지역).
+        {cacheStatus.areaCount > 50 ? " 정확한 추천이 가능합니다." : " 기본 추천이 가능합니다."}
+      </span>
       
       {/* 캐시 정보 표시 */}
       {cacheStatus && cacheStatus.lastUpdated && (

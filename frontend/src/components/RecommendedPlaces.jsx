@@ -93,7 +93,7 @@ const RecommendedPlaces = () => {
                   <line x1="2" y1="12" x2="22" y2="12"></line>
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                 </svg>
-                <span>서울 전역에서 찾은 추천 장소입니다 ({cacheStatus.areaCount}개 지역 데이터 기반)</span>
+                <span>서울 전역에서 찾은 추천 장소입니다 ({cacheStatus.areaCount}개/{120}개 지역 데이터 기반)</span>
               </div>
             ) : (
               <div className="local-recommendation-badge">
@@ -151,7 +151,7 @@ const RecommendedPlaces = () => {
                         {place.congestionLevel}
                       </div>
                       <div className="recommendation-age">
-                        {userPreferences.preferredAgeGroup} 비율: {place.ageGroups[userPreferences.preferredAgeGroup].toFixed(1)}%
+                        {userPreferences.preferredAgeGroup} 비율: <strong>{place.ageGroups[userPreferences.preferredAgeGroup].toFixed(1)}%</strong>
                       </div>
                     </div>
                     <div className="recommendation-reasons">
