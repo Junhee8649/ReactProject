@@ -6,15 +6,20 @@ const UserPreferences = () => {
   const { 
     userPreferences, 
     updateUserPreference, 
+    toggleCategoryPreference,
     toggleRecommendations,
-    dataCollectionStatus 
+    dataCollectionStatus,
+    areaCategories 
   } = usePopulationStore();
+  
+  // 안전 조치: 없는 경우 빈 배열로 처리
+  const categories = userPreferences.categories || [];
   
   return (
     <div className="user-preferences">
       <h3>나의 선호도 설정</h3>
       <div className="preferences-container">
-        {/* 조용한 곳 선호 설정 */}
+        {/* 장소 분위기 선호도 */}
         <div className="preference-item">
           <span className="preference-label">장소 분위기 선호도:</span>
           <div className="toggle-buttons">
@@ -30,6 +35,42 @@ const UserPreferences = () => {
             >
               활기찬 곳
             </button>
+          </div>
+        </div>
+        
+        {/* 선호하는 인구 밀집도 */}
+        <div className="preference-item">
+          <span className="preference-label">선호하는 인구 밀집도:</span>
+          <div className="toggle-buttons">
+            <button 
+              className={`toggle-btn ${userPreferences.preferLowDensity ? 'active' : ''}`}
+              onClick={() => updateUserPreference('preferLowDensity', true)}
+            >
+              여유로운 곳
+            </button>
+            <button 
+              className={`toggle-btn ${!userPreferences.preferLowDensity ? 'active' : ''}`}
+              onClick={() => updateUserPreference('preferLowDensity', false)}
+            >
+              북적이는 곳
+            </button>
+          </div>
+        </div>
+        
+        {/* 관심 장소 유형 */}
+        <div className="preference-item">
+          <span className="preference-label">관심 장소 유형:</span>
+          <div className="category-filters">
+            {areaCategories && areaCategories.map(category => (
+              <label key={category.id} className="category-checkbox">
+                <input
+                  type="checkbox"
+                  checked={categories.includes(category.id)}
+                  onChange={() => toggleCategoryPreference(category.id)}
+                />
+                <span>{category.name}</span>
+              </label>
+            ))}
           </div>
         </div>
         
@@ -49,18 +90,6 @@ const UserPreferences = () => {
             <option value="60s">60대</option>
             <option value="70s">70대 이상</option>
           </select>
-        </div>
-        
-        {/* 혼잡한 곳 피하기 설정 */}
-        <div className="preference-item">
-          <label className="checkbox-label">
-            <input 
-              type="checkbox"
-              checked={userPreferences.avoidCrowds}
-              onChange={(e) => updateUserPreference('avoidCrowds', e.target.checked)}
-            />
-            <span>혼잡한 곳 피하기</span>
-          </label>
         </div>
       </div>
       
