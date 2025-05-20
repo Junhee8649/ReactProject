@@ -1321,12 +1321,17 @@ const usePopulationStore = create(
               
               // 최종 추천 결과 (상위 5개)
               topRecommendations = topRecommendations.slice(0, 5);
-                
+                  
               console.log(`추천 계산 완료: ${topRecommendations.length}개 항목`);
-              
+
+              // 캐시 상태 갱신하여 정확한 지역 수 표시
+              const updatedCacheStatus = cacheUtils.getCacheStatus();
+              console.log(`현재 캐시된 지역 수: ${updatedCacheStatus.areaCount}`);
+
               set({ 
                 globalRecommendations: topRecommendations,
-                isCalculatingRecommendations: false
+                isCalculatingRecommendations: false,
+                cacheStatus: updatedCacheStatus // 캐시 상태 갱신
               });
               return;
             }
