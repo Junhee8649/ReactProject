@@ -39,11 +39,9 @@ const UserPreferences = () => {
           </div>
         </div>
         
-        {/* 선호하는 인구 밀집도 - 제거하고 위의 UI와 통합 */}
-        
         {/* 관심 장소 유형 */}
         <div className="preference-item">
-          <span className="preference-label">관심 장소 유형:</span>
+          <span className="preference-label">관심 장소 유형: <small>(여러 개 선택 가능)</small></span>
           <div className="category-filters">
             {areaCategories && areaCategories.map(category => (
               <label key={category.id} className="category-checkbox">
