@@ -1899,3 +1899,24 @@ img.lazy-load.loaded {
   font-size: 0.8rem;
   color: var(--color-gray-500);
 }
+
+/* PopulationApp.css 파일 끝 부분에 추가 */
+
+/* 선호도 알림 메시지 */
+.preference-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  color: var(--color-gray-700);
+}
+
+.preference-alert svg {
+  flex-shrink: 0;
+  color: var(--color-warning);
+}
