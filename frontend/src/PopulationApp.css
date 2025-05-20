@@ -1920,3 +1920,45 @@ img.lazy-load.loaded {
   flex-shrink: 0;
   color: var(--color-warning);
 }
+
+/* 데이터 수집 진행 상태 표시 */
+.data-collection-progress {
+  background-color: rgba(59, 130, 246, 0.05);
+  border: 1px solid var(--color-primary-light);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.data-collection-progress .loading-spinner {
+  flex-shrink: 0;
+}
+
+.progress-info {
+  flex-grow: 1;
+}
+
+.progress-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--color-gray-800);
+}
+
+.progress-info p {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  color: var(--color-gray-600);
+}
+
+.progress-container {
+  width: 100%;
+}
+
+.progress-text {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  color: var(--color-gray-600);
+}
