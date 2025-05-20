@@ -1962,3 +1962,30 @@ img.lazy-load.loaded {
   margin-top: 0.5rem;
   color: var(--color-gray-600);
 }
+
+/* 모바일에서는 더 컴팩트한 UI */
+@media (max-width: 768px) {
+  .search-results {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    max-height: 50vh;
+    bottom: 0;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1001;
+  }
+  
+  /* 백그라운드 오버레이 추가 */
+  .search-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+  }
+}
