@@ -70,10 +70,21 @@ const RecommendedPlaces = () => {
             )}
           </div>
           
+          {/* 추가: 선호도 알림 메시지 */}
+          {(!userPreferences.categories || userPreferences.categories.length === 0) && (
+            <div className="preference-alert">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>관심 장소 유형을 선택하지 않아 일반적인 인기 장소를 기준으로 추천합니다. 더 맞춤화된 추천을 원하시면 선호도 설정에서 관심 장소 유형을 선택해주세요.</span>
+            </div>
+          )}
+          
           <div className="preference-summary">
             <h4>현재 설정된 선호도:</h4>
             <ul>
-              {/* 기존 코드를 다음으로 변경 */}
               <li>장소 분위기: {userPreferences.preferQuiet ? '조용한 곳' : '활기찬 곳'}</li>
               <li>선호 밀집도: {userPreferences.preferLowDensity ? '여유로운 곳' : '북적이는 곳'}</li>
               <li>선호 나이대: {userPreferences.preferredAgeGroup.replace('s', '대')}</li>
