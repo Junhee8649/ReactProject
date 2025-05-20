@@ -12,7 +12,9 @@ const RecommendedPlaces = () => {
     getCongestionColor,
     userPreferences,
     dataCollectionStatus,
-    areaCategories // 이 부분이 누락되어 있었습니다
+    isCollectingPreferredData, // 추가: 선호 카테고리 데이터 수집 중 상태
+    preferredCategoriesDataStatus, // 추가: 선호 카테고리 데이터 수집 진행 상태
+    areaCategories
   } = usePopulationStore();
   
   // 사용할 추천 목록 결정 (전역 추천이 있으면 우선 사용)
@@ -23,6 +25,13 @@ const RecommendedPlaces = () => {
   if (!showRecommendations) {
     return null;
   }
+  
+  // 카테고리 이름 찾기 헬퍼 함수
+  const getCategoryName = (categoryId) => {
+    if (!areaCategories || areaCategories.length === 0) return categoryId;
+    const category = areaCategories.find(c => c.id === categoryId);
+    return category ? category.name : categoryId;
+  };
   
   return (
     <div className="recommended-places-modal">
@@ -37,8 +46,33 @@ const RecommendedPlaces = () => {
           </button>
         </div>
         
-        {/* 데이터 수집 상태 표시 */}
-        {dataCollectionStatus.loaded < dataCollectionStatus.total && (
+        {/* 선호 카테고리 데이터 수집 중 상태 표시 */}
+        {isCollectingPreferredData && (
+          <div className="data-collection-progress">
+            <div className="loading-spinner"></div>
+            <div className="progress-info">
+              <h3>선호하신 카테고리의 데이터를 수집 중입니다</h3>
+              <p>더 정확한 추천을 위해 선택하신 장소 유형의 데이터를 우선 수집합니다.</p>
+              <div className="progress-container">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{ 
+                      width: `${Math.round((preferredCategoriesDataStatus.progress / preferredCategoriesDataStatus.total) * 100)}%` 
+                    }}
+                  ></div>
+                </div>
+                <div className="progress-text">
+                  {preferredCategoriesDataStatus.progress} / {preferredCategoriesDataStatus.total} 장소 로드됨 
+                  ({Math.round((preferredCategoriesDataStatus.progress / preferredCategoriesDataStatus.total) * 100)}%)
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* 일반 데이터 수집 상태 표시 - 선호 카테고리 데이터 수집 중이 아닐 때만 */}
+        {!isCollectingPreferredData && dataCollectionStatus.loaded < dataCollectionStatus.total && (
           <div className="recommendation-data-status">
             <div className="data-status-icon">ℹ️</div>
             <div className="data-status-text">
@@ -49,7 +83,7 @@ const RecommendedPlaces = () => {
         )}
         
         <div className="recommendation-summary">
-          {/* 추천 범위 표시 (추가된 부분) */}
+          {/* 추천 범위 표시 */}
           <div className="recommendation-scope">
             {globalRecommendations.length > 0 ? (
               <div className="global-recommendation-badge">
@@ -71,7 +105,7 @@ const RecommendedPlaces = () => {
             )}
           </div>
           
-          {/* 추가: 선호도 알림 메시지 */}
+          {/* 선호도 알림 메시지 */}
           {(!userPreferences.categories || userPreferences.categories.length === 0) && (
             <div className="preference-alert">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,77 +121,74 @@ const RecommendedPlaces = () => {
             <h4>현재 설정된 선호도:</h4>
             <ul>
               <li>장소 분위기: {userPreferences.preferQuiet ? '조용한 곳' : '활기찬 곳'}</li>
-              <li>선호 밀집도: {userPreferences.preferLowDensity ? '여유로운 곳' : '북적이는 곳'}</li>
               <li>선호 나이대: {userPreferences.preferredAgeGroup.replace('s', '대')}</li>
               {userPreferences.categories && userPreferences.categories.length > 0 && (
                 <li>
-                  선호 카테고리: {userPreferences.categories.map(catId => {
-                    // areaCategories가 없거나 빈 배열일 경우를 대비한 안전 처리 추가
-                    if (!areaCategories || areaCategories.length === 0) return catId;
-                    const category = areaCategories.find(c => c.id === catId);
-                    return category ? category.name : catId;
-                  }).join(', ')}
+                  선호 카테고리: {userPreferences.categories.map(catId => getCategoryName(catId)).join(', ')}
                 </li>
               )}
             </ul>
           </div>
         </div>
         
-        <div className="recommended-list">
-          {placesToShow.length > 0 ? (
-            placesToShow.map((place, index) => (
-              <div key={place.id} className="recommended-item">
-                <div className="recommendation-rank">
-                  <span className="rank-number">{index + 1}</span>
-                </div>
-                <div className="recommendation-details">
-                  <h3>{place.name}</h3>
-                  <div className="recommendation-stats">
-                    <div 
-                      className="recommendation-congestion"
-                      style={{ backgroundColor: getCongestionColor(place.congestionLevel) }}
+        {/* 추천 목록 섹션 - 데이터 수집 중이 아니고 추천이 있을 때만 */}
+        {!isCollectingPreferredData && (
+          <div className="recommended-list">
+            {placesToShow.length > 0 ? (
+              placesToShow.map((place, index) => (
+                <div key={place.id} className="recommended-item">
+                  <div className="recommendation-rank">
+                    <span className="rank-number">{index + 1}</span>
+                  </div>
+                  <div className="recommendation-details">
+                    <h3>{place.name}</h3>
+                    <div className="recommendation-stats">
+                      <div 
+                        className="recommendation-congestion"
+                        style={{ backgroundColor: getCongestionColor(place.congestionLevel) }}
+                      >
+                        {place.congestionLevel}
+                      </div>
+                      <div className="recommendation-age">
+                        {userPreferences.preferredAgeGroup} 비율: {place.ageGroups[userPreferences.preferredAgeGroup].toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="recommendation-reasons">
+                      <h4>추천 이유:</h4>
+                      <ul>
+                        {place.matchReason.map((reason, i) => (
+                          <li key={i}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <button 
+                      className="recommendation-select-btn"
+                      onClick={() => {
+                        selectPlace(place.id);
+                        toggleRecommendations();
+                        
+                        // 지도 영역으로 스크롤
+                        const mapElement = document.querySelector('.map-container');
+                        if (mapElement) {
+                          mapElement.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }}
                     >
-                      {place.congestionLevel}
-                    </div>
-                    <div className="recommendation-age">
-                      {userPreferences.preferredAgeGroup} 비율: {place.ageGroups[userPreferences.preferredAgeGroup].toFixed(1)}%
-                    </div>
+                      이 장소로 이동
+                    </button>
                   </div>
-                  <div className="recommendation-reasons">
-                    <h4>추천 이유:</h4>
-                    <ul>
-                      {place.matchReason.map((reason, i) => (
-                        <li key={i}>{reason}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <button 
-                    className="recommendation-select-btn"
-                    onClick={() => {
-                      selectPlace(place.id);
-                      toggleRecommendations();
-                      
-                      // 지도 영역으로 스크롤
-                      const mapElement = document.querySelector('.map-container');
-                      if (mapElement) {
-                        mapElement.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                  >
-                    이 장소로 이동
-                  </button>
                 </div>
+              ))
+            ) : (
+              <div className="no-recommendations">
+                <p>현재 설정에 맞는 추천 장소를 찾을 수 없습니다.</p>
+                <p>선호도 설정을 변경해보세요.</p>
               </div>
-            ))
-          ) : (
-            <div className="no-recommendations">
-              <p>현재 설정에 맞는 추천 장소를 찾을 수 없습니다.</p>
-              <p>선호도 설정을 변경해보세요.</p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
         
-        {/* 하단 정보 - 마지막 업데이트 시간으로 대체 */}
+        {/* 하단 정보 */}
         <div className="recommendation-source">
           <small>
             마지막 업데이트: {new Date().toLocaleString()}
