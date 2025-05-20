@@ -18,6 +18,23 @@ const AreaCategories = () => {
     }
   };
   
+  // 카테고리 내 지역 선택 함수 - 개선된 부분
+  const selectCategoryArea = (areaId) => {
+    // 지역 선택
+    selectArea(areaId);
+    
+    // 드롭다운 닫기
+    setActiveCategory(null);
+    
+    // 지도 영역으로 스크롤
+    setTimeout(() => {
+      const mapElement = document.querySelector('.map-container');
+      if (mapElement) {
+        mapElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+  
   // 카테고리 아이콘 매핑
   const getCategoryIcon = (categoryId) => {
     switch(categoryId) {
@@ -101,7 +118,7 @@ const AreaCategories = () => {
                   <div 
                     key={area.id}
                     className="category-area-item"
-                    onClick={() => selectArea(area.id)}
+                    onClick={() => selectCategoryArea(area.id)}
                   >
                     {area.name}
                   </div>
