@@ -17,6 +17,8 @@ const AreaSearch = () => {
   
   // 로컬 상태: 이전 검색어 저장
   const [lastSearched, setLastSearched] = useState('');
+  // 검색 결과가 보이는지 여부 추적을 위한 상태 추가
+  const [isSearchResultsVisible, setIsSearchResultsVisible] = useState(false);
   
   // 직접 검색 처리
   const handleDirectSearch = () => {
@@ -25,6 +27,8 @@ const AreaSearch = () => {
       setLastSearched(searchText.trim());
       // 직접 입력 검색 실행
       fetchData(searchText.trim());
+      // 검색 결과 창 닫기
+      setIsSearchResultsVisible(false);
     }
   };
   
@@ -41,6 +45,33 @@ const AreaSearch = () => {
     }
   };
   
+  // 검색 입력창 변경 핸들러
+  const handleSearchInputChange = (e) => {
+    searchAreas(e.target.value);
+    // 입력값이 있으면 검색 결과 표시
+    setIsSearchResultsVisible(e.target.value.trim() !== '');
+  };
+  
+  // 검색 결과 아이템 선택 핸들러
+  const handleSelectArea = (areaId) => {
+    selectArea(areaId);
+    setIsSearchResultsVisible(false); // 선택 후 결과창 닫기
+  };
+  
+  // 검색 결과 외부 클릭 감지를 위한 이벤트 리스너
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isSearchResultsVisible && !event.target.closest('.area-search')) {
+        setIsSearchResultsVisible(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSearchResultsVisible]);
+  
   return (
     <div className="area-search">
       <h3>지역 검색</h3>
@@ -48,7 +79,8 @@ const AreaSearch = () => {
         <input
           type="text"
           value={searchText}
-          onChange={(e) => searchAreas(e.target.value)}
+          onChange={handleSearchInputChange}
+          onClick={() => searchText.trim() !== '' && setIsSearchResultsVisible(true)}
           placeholder="지역명 검색 (예: 강남, 홍대, 명동)"
           className="search-input"
           disabled={isLoading}
@@ -87,7 +119,7 @@ const AreaSearch = () => {
         </button>
       )}
       
-      {searchText.trim() !== '' && searchResults.length === 0 && (
+      {searchText.trim() !== '' && searchResults.length === 0 && isSearchResultsVisible && (
         <div className="search-no-results">
           <p>검색 결과가 없습니다.</p>
           <small>원하는 지역명을 직접 입력해 검색할 수 있습니다:</small>
@@ -101,13 +133,25 @@ const AreaSearch = () => {
         </div>
       )}
       
-      {searchResults.length > 0 && (
-        <div className="search-results">
+      {/* 모바일용 오버레이 배경 (검색 결과 표시 시) */}
+      {isSearchResultsVisible && searchResults.length > 0 && (
+        <div className="search-overlay" onClick={() => setIsSearchResultsVisible(false)}></div>
+      )}
+      
+      {/* 수정된 검색 결과 컨테이너 */}
+      {searchResults.length > 0 && isSearchResultsVisible && (
+        <div className="search-results" 
+             style={{ 
+               maxHeight: '300px',
+               overflowY: 'auto',
+               boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+               zIndex: 1000
+             }}>
           {searchResults.map(area => (
             <div 
               key={area.id}
               className="search-result-item"
-              onClick={() => selectArea(area.id)}
+              onClick={() => handleSelectArea(area.id)}
             >
               <span className="result-name">{area.name}</span>
               {area.category && (
