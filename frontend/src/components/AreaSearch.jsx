@@ -12,7 +12,7 @@ const AreaSearch = () => {
     searchFeedback,
     setSearchFeedback,
     isLoading,
-    selectedArea // 추가: 현재 선택된 지역 상태 가져오기
+    selectedArea
   } = usePopulationStore();
   
   // 로컬 상태: 이전 검색어 저장
@@ -47,15 +47,28 @@ const AreaSearch = () => {
   
   // 검색 입력창 변경 핸들러
   const handleSearchInputChange = (e) => {
+    // 스토어 검색 상태 업데이트
     searchAreas(e.target.value);
-    // 입력값이 있으면 검색 결과 표시
-    setIsSearchResultsVisible(e.target.value.trim() !== '');
+    
+    // 검색어가 있으면 검색 결과 컨테이너 표시
+    if (e.target.value.trim() !== '') {
+      setIsSearchResultsVisible(true);
+    } else {
+      setIsSearchResultsVisible(false);
+    }
   };
   
   // 검색 결과 아이템 선택 핸들러
   const handleSelectArea = (areaId) => {
     selectArea(areaId);
     setIsSearchResultsVisible(false); // 선택 후 결과창 닫기
+  };
+  
+  // 검색창 포커스 핸들러
+  const handleSearchFocus = () => {
+    if (searchText.trim() !== '') {
+      setIsSearchResultsVisible(true);
+    }
   };
   
   // 검색 결과 외부 클릭 감지를 위한 이벤트 리스너
@@ -80,7 +93,7 @@ const AreaSearch = () => {
           type="text"
           value={searchText}
           onChange={handleSearchInputChange}
-          onClick={() => searchText.trim() !== '' && setIsSearchResultsVisible(true)}
+          onFocus={handleSearchFocus}
           placeholder="지역명 검색 (예: 강남, 홍대, 명동)"
           className="search-input"
           disabled={isLoading}
@@ -119,53 +132,49 @@ const AreaSearch = () => {
         </button>
       )}
       
-      {searchText.trim() !== '' && searchResults.length === 0 && isSearchResultsVisible && (
-        <div className="search-no-results">
-          <p>검색 결과가 없습니다.</p>
-          <small>원하는 지역명을 직접 입력해 검색할 수 있습니다:</small>
-          <button 
-            className="direct-search-btn"
-            onClick={handleDirectSearch}
-            disabled={isLoading}
-          >
-            "{searchText}" 직접 검색하기
-          </button>
-        </div>
-      )}
-      
       {/* 모바일용 오버레이 배경 (검색 결과 표시 시) */}
-      {isSearchResultsVisible && searchResults.length > 0 && (
+      {isSearchResultsVisible && searchText.trim() !== '' && (
         <div className="search-overlay" onClick={() => setIsSearchResultsVisible(false)}></div>
       )}
       
-      {/* 수정된 검색 결과 컨테이너 */}
-      {searchResults.length > 0 && isSearchResultsVisible && (
-        <div className="search-results" 
-             style={{ 
-               maxHeight: '300px',
-               overflowY: 'auto',
-               boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-               zIndex: 1000
-             }}>
-          {searchResults.map(area => (
-            <div 
-              key={area.id}
-              className="search-result-item"
-              onClick={() => handleSelectArea(area.id)}
-            >
-              <span className="result-name">{area.name}</span>
-              {area.category && (
-                <span className="result-category">
-                  {area.category === 'tourist' ? '관광특구' : 
-                   area.category === 'station' ? '주요역' :
-                   area.category === 'park' ? '공원' :
-                   area.category === 'shopping' ? '쇼핑' :
-                   area.category === 'heritage' ? '고궁·문화유산' : 
-                   area.category}
-                </span>
-              )}
+      {/* 통합된 검색 결과 컨테이너 - 결과 유무와 상관없이 동일한 컨테이너 사용 */}
+      {isSearchResultsVisible && searchText.trim() !== '' && (
+        <div className="search-results">
+          {searchResults.length > 0 ? (
+            // 검색 결과가 있는 경우
+            searchResults.map(area => (
+              <div 
+                key={area.id}
+                className="search-result-item"
+                onClick={() => handleSelectArea(area.id)}
+              >
+                <span className="result-name">{area.name}</span>
+                {area.category && (
+                  <span className="result-category">
+                    {area.category === 'tourist' ? '관광특구' : 
+                     area.category === 'station' ? '주요역' :
+                     area.category === 'park' ? '공원' :
+                     area.category === 'shopping' ? '발달상권' :
+                     area.category === 'heritage' ? '고궁·문화유산' : 
+                     area.category}
+                  </span>
+                )}
+              </div>
+            ))
+          ) : (
+            // 검색 결과가 없는 경우 - 같은 컨테이너 내에 표시
+            <div className="no-results-content">
+              <p>검색 결과가 없습니다.</p>
+              <small>원하는 지역명을 직접 입력해 검색할 수 있습니다:</small>
+              <button 
+                className="direct-search-btn"
+                onClick={handleDirectSearch}
+                disabled={isLoading}
+              >
+                "{searchText}" 직접 검색하기
+              </button>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

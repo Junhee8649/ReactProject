@@ -1989,3 +1989,89 @@ img.lazy-load.loaded {
     z-index: 1000;
   }
 }
+
+/* 검색 결과 스타일 통합 - PopulationApp.css에 추가 */
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 4px;
+  box-shadow: var(--shadow-md);
+  animation: fadeInDown 0.2s ease-in-out;
+}
+
+.no-results-content {
+  padding: 1rem;
+}
+
+.no-results-content p {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-gray-600);
+}
+
+.no-results-content small {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--color-gray-500);
+}
+
+/* 검색 결과 나타나는 애니메이션 */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 검색 오버레이 - 모바일용 */
+.search-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 990;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 반응형 모바일 뷰 개선 */
+@media (max-width: 768px) {
+  .search-results {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 70vh;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    animation: slideUp 0.3s ease-in-out;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+}
