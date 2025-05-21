@@ -3,12 +3,22 @@
     {
       "src": "/api/population",
       "dest": "/api/population.js",
-      "methods": ["GET"]
+      "methods": ["GET", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "X-Requested-With, Content-Type, Authorization"
+      }
     },
     {
       "src": "/api/areas",
       "dest": "/api/areas.js",
-      "methods": ["GET"]
+      "methods": ["GET", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "X-Requested-With, Content-Type, Authorization"
+      }
     },
     {
       "handle": "filesystem"
