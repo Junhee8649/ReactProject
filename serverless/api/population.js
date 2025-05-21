@@ -45,7 +45,28 @@ export default async function handler(req, res) {
         '광장 시장': '광장(전통)시장',
         
         // 추가 매핑
-        'DDP': 'DDP(동대문디자인플라자)'
+        'DDP': 'DDP(동대문디자인플라자)',
+        
+        // 고궁/문화유산
+        '경복궁': '경복궁',
+        '광화문·덕수궁': '광화문·덕수궁',
+        '광화문': '광화문·덕수궁',
+        '덕수궁': '광화문·덕수궁',
+        '보신각': '보신각',
+        '서울 암사동 유적': '서울 암사동 유적',
+        '암사동': '서울 암사동 유적',
+        '창덕궁·종묘': '창덕궁·종묘',
+        '창덕궁': '창덕궁·종묘',
+        '종묘': '창덕궁·종묘',
+        
+        // 주요 상권
+        '가로수길': '가로수길',
+        '인사동': '인사동',
+        '청담동': '청담동 명품거리',
+        '북촌': '북촌한옥마을',
+        '서촌': '서촌',
+        '이태원 앤틱가구거리': '이태원 앤틱가구거리',
+        '익선동': '익선동'
       };
       
       // 정확히 일치하는 매핑이 있는지 확인
@@ -64,6 +85,7 @@ export default async function handler(req, res) {
     // API 호출 시도 및 실패 시 재시도 로직
     let apiUrl, response, rawData;
     
+    // API 호출 시도 및 실패 시 재시도 로직 개선
     try {
       // 표준 API 요청
       apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(requestArea)}`;
@@ -72,11 +94,11 @@ export default async function handler(req, res) {
       response = await fetch(apiUrl);
       rawData = await response.json();
       
-      // 첫 시도 실패 시 테스트
+      // 첫 시도 실패 시 추가 로직
       if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
-        console.log(`No data found for "${requestArea}", trying alternative...`);
+        console.log(`No data found for "${requestArea}", trying alternatives...`);
         
-        // 괄호 제거 시도
+        // 1. 괄호 제거 시도
         const cleanedArea = requestArea.replace(/\([^\)]+\)/g, '').trim();
         if (cleanedArea !== requestArea) {
           apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(cleanedArea)}`;
@@ -85,30 +107,44 @@ export default async function handler(req, res) {
           response = await fetch(apiUrl);
           rawData = await response.json();
         }
-      }
-      
-      // 여전히 데이터 없으면 "관광특구" 접미사 추가 시도
-      if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
-        // 특정 지역명인 경우 관광특구 시도
-        const locationKeywords = ['강남', '동대문', '명동', '이태원', '홍대'];
-        const matchKeyword = locationKeywords.find(k => requestArea.includes(k));
         
-        if (matchKeyword && !requestArea.includes('관광특구')) {
-          const touristArea = `${matchKeyword} 관광특구`;
-          apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(touristArea)}`;
-          console.log(`Trying with tourist area: "${touristArea}"`);
+        // 2. 여전히 데이터 없으면 "관광특구" 접미사 추가 시도
+        if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
+          // 특정 지역명인 경우 관광특구 시도
+          const locationKeywords = ['강남', '동대문', '명동', '이태원', '홍대'];
+          const matchKeyword = locationKeywords.find(k => requestArea.includes(k));
           
-          response = await fetch(apiUrl);
-          rawData = await response.json();
+          if (matchKeyword && !requestArea.includes('관광특구')) {
+            const touristArea = `${matchKeyword} 관광특구`;
+            apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(touristArea)}`;
+            console.log(`Trying with tourist area: "${touristArea}"`);
+            
+            response = await fetch(apiUrl);
+            rawData = await response.json();
+          }
         }
-      }
-      
-      // 여전히 데이터 없으면 오류 반환
-      if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
-        return res.status(404).json({
-          error: "요청한 지역의 데이터를 찾을 수 없습니다",
-          message: "정확한 지역명으로 다시 시도해보세요"
-        });
+        
+        // 3. 여전히 데이터 없으면 다른 이름 변형도 시도
+        if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
+          // 역 접미사 추가 시도
+          if (!requestArea.includes('역') && !requestArea.includes('공원') && !requestArea.includes('시장')) {
+            const stationArea = `${requestArea}역`;
+            apiUrl = `http://openapi.seoul.go.kr:8088/${API_KEY}/json/citydata_ppltn/1/5/${encodeURIComponent(stationArea)}`;
+            console.log(`Trying with station suffix: "${stationArea}"`);
+            
+            response = await fetch(apiUrl);
+            rawData = await response.json();
+          }
+        }
+        
+        // 여전히 데이터 없으면 오류 반환
+        if (!rawData["SeoulRtd.citydata_ppltn"] || rawData["SeoulRtd.citydata_ppltn"].length === 0) {
+          return res.status(404).json({
+            error: "요청한 지역의 데이터를 찾을 수 없습니다",
+            message: `"${requestArea}" 지역의 데이터가 없습니다. 정확한 지역명으로 다시 시도해보세요.`,
+            alternativeNames: suggestionList(requestArea) // 추천 지역명 목록 추가
+          });
+        }
       }
     } catch (error) {
       console.error(`API request error: ${error.message}`);
@@ -454,4 +490,63 @@ function getCoordinatesForPlace(placeName, placeCode) {
     seoulCenter[0] + smallRandomOffset(),
     seoulCenter[1] + smallRandomOffset()
   ];
+}
+
+// 지역명 추천 함수 - API 오류 시 비슷한 지역명 추천
+function suggestionList(searchTerm) {
+  if (!searchTerm || searchTerm.length < 2) return [];
+  
+  const lowercaseSearch = searchTerm.toLowerCase();
+  const suggestions = [];
+  
+  // 알려진 모든 지역 목록 (POI 코드 있는 장소들)
+  const knownPlaces = [
+    '강남 MICE 관광특구', '동대문 관광특구', '명동 관광특구', '이태원 관광특구',
+    '잠실 관광특구', '종로·청계 관광특구', '홍대 관광특구', '경복궁', '광화문·덕수궁',
+    '보신각', '서울 암사동 유적', '창덕궁·종묘', '가산디지털단지역', '강남역',
+    '건대입구역', '고덕역', '고속터미널역', '교대역', '구로디지털단지역', '구로역',
+    '군자역', '대림역', '동대문역', '뚝섬역', '미아사거리역', '발산역', '사당역',
+    '삼각지역', '서울대입구역', '서울식물원·마곡나루역', '서울역', '선릉역',
+    '성신여대입구역', '수유역', '신논현역·논현역', '신도림역', '신림역',
+    '신촌·이대역', '양재역', '역삼역', '연신내역', '오목교역·목동운동장',
+    '왕십리역', '용산역', '이태원역', '장지역', '장한평역', '천호역',
+    '총신대입구(이수)역', '충정로역', '합정역', '혜화역', '홍대입구역(2호선)',
+    '회기역', '쌍문역', '신정네거리역', '잠실새내역', '잠실역',
+    // 발달상권 추가...
+    '가락시장', '가로수길', '광장(전통)시장', '북촌한옥마을', '서촌',
+    '성수카페거리', '압구정로데오거리', '여의도', '연남동', '영등포 타임스퀘어',
+    '용리단길', '이태원 앤틱가구거리', '인사동', '창동 신경제 중심지', 
+    '청담동 명품거리', '해방촌·경리단길', 'DDP(동대문디자인플라자)',
+    'DMC(디지털미디어시티)', '북창동 먹자골목', '남대문시장', '익선동',
+    '잠실롯데타워 일대', '송리단길·호수단길', '신촌 스타광장',
+    // 공원 추가...
+    '강서한강공원', '고척돔', '광나루한강공원', '광화문광장', 
+    '국립중앙박물관·용산가족공원', '난지한강공원', '남산공원'
+    // ...생략...
+  ];
+  
+  // 검색어와 비슷한 이름의 장소 찾기
+  knownPlaces.forEach(place => {
+    const lowercasePlace = place.toLowerCase();
+    
+    // 1. 포함 관계 체크
+    if (lowercasePlace.includes(lowercaseSearch) ||
+        lowercaseSearch.includes(lowercasePlace)) {
+      suggestions.push(place);
+    }
+    // 2. 단어 일부 체크
+    else {
+      const words = place.split(/[\s·\(\)]+/);
+      for (const word of words) {
+        if (word.toLowerCase().includes(lowercaseSearch) ||
+            lowercaseSearch.includes(word.toLowerCase())) {
+          suggestions.push(place);
+          break;
+        }
+      }
+    }
+  });
+  
+  // 최대 5개 반환
+  return suggestions.slice(0, 5);
 }

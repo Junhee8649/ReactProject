@@ -12,58 +12,173 @@ const AreaSearch = () => {
     searchFeedback,
     setSearchFeedback,
     isLoading,
-    selectedArea // 추가: 현재 선택된 지역 상태 가져오기
+    selectedArea,
+    availableAreas
   } = usePopulationStore();
   
-  // 로컬 상태: 이전 검색어 저장
   const [lastSearched, setLastSearched] = useState('');
+  const [isSearchResultsVisible, setIsSearchResultsVisible] = useState(false);
   
-  // 직접 검색 처리
-  const handleDirectSearch = () => {
-    if (searchText && searchText.trim().length > 1) {
-      // 직접 검색 수행 전 마지막 검색어 저장
-      setLastSearched(searchText.trim());
-      // 직접 입력 검색 실행
-      fetchData(searchText.trim());
+  // 인기 지역 리스트 - 실제 데이터에 맞게 조정 필요
+  const popularAreas = [
+    '강남 MICE 관광특구', '명동 관광특구', '홍대 관광특구', 
+    '동대문 관광특구', '경복궁', '서울역'
+  ];
+  
+  // 검색어와 유사한 지역 찾기
+  const getSimilarAreas = (query) => {
+    if (!query || !availableAreas || availableAreas.length === 0) {
+      return [];
     }
+    
+    const lowerQuery = query.toLowerCase();
+    return availableAreas
+      .filter(area => 
+        area.name.toLowerCase().includes(lowerQuery) || 
+        (area.keywords && area.keywords.some(k => k.includes(lowerQuery)))
+      )
+      .slice(0, 3); // 상위 3개만 보여주기
   };
   
-  // 재검색 처리 (같은 지역 강제 새로고침)
+  // 재검색 처리
   const handleResearch = () => {
     if (selectedArea) {
-      // 같은 지역 재검색 - selectArea 함수 내부에서 forceRefresh 처리됨
       selectArea(selectedArea);
       setSearchFeedback("선택된 지역 데이터를 새로고침합니다.");
     } else if (lastSearched) {
-      // 이전 직접 검색어가 있으면 재검색
-      fetchData(lastSearched, true); // 강제 갱신 플래그 전달
+      fetchData(lastSearched, true);
       setSearchFeedback(`"${lastSearched}" 데이터를 새로고침합니다.`);
     }
   };
   
+  // 검색 입력창 변경 핸들러
+  const handleSearchInputChange = (e) => {
+    searchAreas(e.target.value);
+    
+    if (e.target.value.trim() !== '') {
+      setIsSearchResultsVisible(true);
+    } else {
+      setIsSearchResultsVisible(false);
+    }
+  };
+  
+  // 검색 결과 아이템 선택 핸들러
+  const handleSelectArea = (areaId) => {
+    selectArea(areaId);
+    setIsSearchResultsVisible(false);
+  };
+  
+  // 검색창 포커스 핸들러
+  const handleSearchFocus = () => {
+    if (searchText.trim() !== '') {
+      setIsSearchResultsVisible(true);
+    }
+  };
+  
+  // 검색 결과 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isSearchResultsVisible && !event.target.closest('.area-search')) {
+        setIsSearchResultsVisible(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSearchResultsVisible]);
+  
   return (
     <div className="area-search">
       <h3>지역 검색</h3>
-      <div className="search-container">
-        <input
-          type="text"
-          value={searchText}
-          onChange={(e) => searchAreas(e.target.value)}
-          placeholder="지역명 검색 (예: 강남, 홍대, 명동)"
-          className="search-input"
-          disabled={isLoading}
-        />
-        <button 
-          className="search-button" 
-          disabled={isLoading}
-          onClick={() => searchText.trim() && handleDirectSearch()}
-          title="검색"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </button>
+      
+      <div className="search-input-container">
+        <div className="search-container">
+          <input
+            type="text"
+            value={searchText}
+            onChange={handleSearchInputChange}
+            onFocus={handleSearchFocus}
+            placeholder="지역명 검색 (예: 강남, 홍대, 명동)"
+            className="search-input"
+            disabled={isLoading}
+          />
+          <button 
+            className="search-button" 
+            disabled={isLoading}
+            onClick={() => searchText.trim() && selectArea(searchText.trim())}
+            title="검색"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+        </div>
+        
+        {/* 검색 결과 - 검색창 바로 아래에 위치 */}
+        {isSearchResultsVisible && searchText.trim() !== '' && (
+          <div className="search-results">
+            {searchResults.length > 0 ? (
+              // 검색 결과가 있는 경우
+              searchResults.map(area => (
+                <div 
+                  key={area.id}
+                  className="search-result-item"
+                  onClick={() => handleSelectArea(area.id)}
+                >
+                  <span className="result-name">{area.name}</span>
+                  {area.category && (
+                    <span className="result-category">
+                      {area.category === 'tourist' ? '관광특구' : 
+                       area.category === 'station' ? '주요역' :
+                       area.category === 'park' ? '공원' :
+                       area.category === 'shopping' ? '발달상권' :
+                       area.category === 'heritage' ? '고궁·문화유산' : 
+                       area.category}
+                    </span>
+                  )}
+                </div>
+              ))
+            ) : (
+              // 검색 결과가 없는 경우 - 인기/추천 지역 표시
+              <div className="no-results-content">
+                <p>검색 결과가 없습니다. 인기 지역을 확인해보세요:</p>
+                <div className="suggested-areas">
+                  {/* 인기 지역 표시 */}
+                  {popularAreas.slice(0, 3).map((areaName, index) => {
+                    const area = availableAreas.find(a => a.name === areaName);
+                    if (!area) return null;
+                    
+                    return (
+                      <div 
+                        key={index}
+                        className="suggested-area-item"
+                        onClick={() => handleSelectArea(area.id)}
+                      >
+                        <span className="suggestion-icon">🔍</span>
+                        <span>{area.name}</span>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* 유사한 지역 표시 */}
+                  {getSimilarAreas(searchText).map((area, index) => (
+                    <div 
+                      key={`similar-${index}`}
+                      className="suggested-area-item"
+                      onClick={() => handleSelectArea(area.id)}
+                    >
+                      <span className="suggestion-icon">📍</span>
+                      <span>{area.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {/* 검색 피드백 표시 */}
@@ -73,7 +188,7 @@ const AreaSearch = () => {
         </div>
       )}
       
-      {/* 현재 선택된 지역이나 이전 검색어가 있을 때 재검색 버튼 표시 */}
+      {/* 재검색 버튼은 검색 결과 영역과 분리하여 아래에 배치 */}
       {(selectedArea || lastSearched) && (
         <button 
           className="refresh-search-btn"
@@ -87,42 +202,9 @@ const AreaSearch = () => {
         </button>
       )}
       
-      {searchText.trim() !== '' && searchResults.length === 0 && (
-        <div className="search-no-results">
-          <p>검색 결과가 없습니다.</p>
-          <small>원하는 지역명을 직접 입력해 검색할 수 있습니다:</small>
-          <button 
-            className="direct-search-btn"
-            onClick={handleDirectSearch}
-            disabled={isLoading}
-          >
-            "{searchText}" 직접 검색하기
-          </button>
-        </div>
-      )}
-      
-      {searchResults.length > 0 && (
-        <div className="search-results">
-          {searchResults.map(area => (
-            <div 
-              key={area.id}
-              className="search-result-item"
-              onClick={() => selectArea(area.id)}
-            >
-              <span className="result-name">{area.name}</span>
-              {area.category && (
-                <span className="result-category">
-                  {area.category === 'tourist' ? '관광특구' : 
-                   area.category === 'station' ? '주요역' :
-                   area.category === 'park' ? '공원' :
-                   area.category === 'shopping' ? '쇼핑' :
-                   area.category === 'heritage' ? '고궁·문화유산' : 
-                   area.category}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+      {/* 모바일용 오버레이 배경 */}
+      {isSearchResultsVisible && searchText.trim() !== '' && (
+        <div className="search-overlay" onClick={() => setIsSearchResultsVisible(false)}></div>
       )}
     </div>
   );
