@@ -7,7 +7,7 @@ services:
     ports:
       - "8080:80"
     networks:
-      - dweb-network
+      - junhee-network
 networks:
-  dweb-network:
+  junhee-network:
     driver: bridge
