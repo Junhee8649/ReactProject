@@ -9,6 +9,13 @@
       "src": "/api/areas",
       "dest": "/api/areas.js",
       "methods": ["GET"]
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
