@@ -15,13 +15,9 @@ const RecommendedPlaces = () => {
     isCollectingPreferredData, // 추가: 선호 카테고리 데이터 수집 중 상태
     preferredCategoriesDataStatus, // 추가: 선호 카테고리 데이터 수집 진행 상태
     areaCategories,
-    cacheStatus  // 추가: 캐시 상태 정보 가져오기
+    cacheStatus,  // 추가: 캐시 상태 정보 가져오기
+    cachedAllAreasData  // 추가: cachedAllAreasData 변수 가져오기
   } = usePopulationStore();
-  
-  // 사용할 추천 목록 결정 (전역 추천이 있으면 우선 사용)
-  const placesToShow = globalRecommendations.length > 0 
-    ? globalRecommendations 
-    : recommendedPlaces;
   
   if (!showRecommendations) {
     return null;
@@ -86,24 +82,14 @@ const RecommendedPlaces = () => {
         <div className="recommendation-summary">
           {/* 추천 범위 표시 */}
           <div className="recommendation-scope">
-            {placesToShow === globalRecommendations && globalRecommendations.length > 0 ? (
-              <div className="global-recommendation-badge">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-                <span>서울 전역에서 찾은 추천 장소입니다 ({cacheStatus.areaCount}개/{120}개 지역 데이터 기반)</span>
-              </div>
-            ) : (
-              <div className="local-recommendation-badge">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                <span>현재 선택한 지역 주변에서만 찾은 추천입니다</span>
-              </div>
-            )}
+            <div className="global-recommendation-badge">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+              <span>서울 전역에서 찾은 추천 장소입니다 ({cacheStatus.areaCount}개/{120}개 지역 데이터 기반)</span>
+            </div>
           </div>
           
           {/* 선호도 알림 메시지 */}
@@ -135,9 +121,10 @@ const RecommendedPlaces = () => {
         {/* 추천 목록 섹션 - 데이터 수집 중이 아니고 추천이 있을 때만 */}
         {!isCollectingPreferredData && (
           <div className="recommended-list">
-            {placesToShow.length > 0 ? (
-              placesToShow.map((place, index) => (
+            {globalRecommendations.length > 0 ? (
+              globalRecommendations.map((place, index) => (
                 <div key={place.id} className="recommended-item">
+                  {/* 추천 아이템 내용 (기존 코드 유지) */}
                   <div className="recommendation-rank">
                     <span className="rank-number">{index + 1}</span>
                   </div>
@@ -182,8 +169,17 @@ const RecommendedPlaces = () => {
               ))
             ) : (
               <div className="no-recommendations">
-                <p>현재 설정에 맞는 추천 장소를 찾을 수 없습니다.</p>
-                <p>선호도 설정을 변경해보세요.</p>
+                {cachedAllAreasData.length < 3 ? (
+                  <>
+                    <p>데이터를 더 로드하는 중입니다. 잠시 기다려주세요.</p>
+                    <p>더 정확한 추천을 위해 데이터를 수집하고 있습니다.</p>
+                  </>
+                ) : (
+                  <>
+                    <p>현재 설정에 맞는 추천 장소를 찾을 수 없습니다.</p>
+                    <p>선호도 설정을 변경해보세요.</p>
+                  </>
+                )}
               </div>
             )}
           </div>
