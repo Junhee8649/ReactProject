@@ -50,12 +50,7 @@ const DataCollectionStatus = () => {
     return (
       <div className="data-collection-status">
         <div className="status-header">
-          <h4>추천 시스템 데이터 수집</h4>
-          {!dataCollectionStatus.inProgress && (
-            <button onClick={startDataCollection} className="start-collection-btn">
-              {dataCollectionStatus.loaded > 0 ? '계속 수집' : '데이터 수집 시작'}
-            </button>
-          )}
+          <h4>핵심 지역 데이터 자동 수집 중</h4>
         </div>
         <div className="progress-container">
           <div className="progress-bar">
