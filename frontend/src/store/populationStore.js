@@ -313,7 +313,6 @@ const usePopulationStore = create(
       },
       
       // 추천 관련 상태
-      recommendedPlaces: [],      // 현재 지역 기반 추천 장소 목록
       globalRecommendations: [],  // 모든 캐시된 지역 기반 추천 장소 목록
       showRecommendations: false, // 추천 화면 표시 여부
       isCalculatingRecommendations: false, // 추가: 계산 중 플래그
@@ -787,8 +786,6 @@ const usePopulationStore = create(
           
           // 전역 추천 업데이트
           get().calculateGlobalRecommendations();
-          // 현재 지역 추천 계산
-          get().calculateRecommendations();
           
         } catch (error) {
           console.error('Error fetching population data:', error);
@@ -984,11 +981,11 @@ const usePopulationStore = create(
         
         // 먼저 filteredData에서 찾기
         let selectedPlace = filteredData ? filteredData.find(p => p.id === placeId) : null;
-        
+
         // filteredData에 없으면 추천 목록에서 찾기
         if (!selectedPlace) {
-          const allRecommendations = [...globalRecommendations, ...recommendedPlaces];
-          selectedPlace = allRecommendations.find(p => p.id === placeId);
+          // 글로벌 추천 목록만 참조
+          selectedPlace = globalRecommendations.find(p => p.id === placeId);
           
           // 추천 장소를 선택했다면, 해당 지역의 전체 데이터도 로드
           if (selectedPlace) {
@@ -1119,8 +1116,6 @@ const usePopulationStore = create(
         const { cachedAllAreasData } = get();
         if (cachedAllAreasData.length > 0) {
           get().calculateGlobalRecommendations();
-        } else {
-          get().calculateRecommendations();
         }
       },
 
@@ -1154,104 +1149,7 @@ const usePopulationStore = create(
         const { cachedAllAreasData } = get();
         if (cachedAllAreasData.length > 0) {
           get().calculateGlobalRecommendations();
-        } else {
-          get().calculateRecommendations();
         }
-      },
-      
-      // 현재 장소 기반 추천 계산
-      calculateRecommendations: () => {
-        const { populationData, userPreferences } = get();
-        
-        if (!populationData || !populationData.places || populationData.places.length === 0) {
-          return set({ recommendedPlaces: [] });
-        }
-        
-        // 추가: 선호도가 없거나 최소한인 경우 (카테고리 선택 없음)
-        const hasMinimalPreferences = !userPreferences.categories || userPreferences.categories.length === 0;
-        
-        // 추가: 각 장소에 카테고리 정보 추가
-        const placesWithCategory = populationData.places.map(place => {
-          // 가져온 지역의 카테고리 찾기
-          const availableAreas = get().availableAreas || [];
-          const areaInfo = availableAreas.find(area => area.name === place.name) || {};
-          return {
-            ...place,
-            category: areaInfo.category // 카테고리 정보 추가
-          };
-        });
-        
-        // 추천 알고리즘 - 추출한 함수 사용
-        const scored = placesWithCategory.map(place => {
-          // 기본 추천 점수 계산
-          let recommendScore = 50;
-          let matchReason = [];
-          
-          // 선호 나이대에 따른 점수 계산 (공통)
-          const ageGroupRate = place.ageGroups[userPreferences.preferredAgeGroup] || 0;
-          recommendScore += ageGroupRate * 1.5;
-          
-          if (ageGroupRate > 15) {
-            matchReason.push(`${userPreferences.preferredAgeGroup.replace('s', '대')} 비율이 ${ageGroupRate.toFixed(1)}%로 높음`);
-          }
-          
-          // 장소 분위기에 따른 점수 계산 (공통)
-          const isQuietPlace = ['여유', '보통'].includes(place.congestionLevel);
-          if ((userPreferences.preferQuiet && isQuietPlace) || 
-              (!userPreferences.preferQuiet && !isQuietPlace)) {
-            recommendScore += 30;
-            
-            if (userPreferences.preferQuiet && isQuietPlace) {
-              matchReason.push(`혼잡도가 '${place.congestionLevel}'로 조용한 분위기`);
-            } else if (!userPreferences.preferQuiet && !isQuietPlace) {
-              matchReason.push(`혼잡도가 '${place.congestionLevel}'로 활기찬 분위기`);
-            }
-          }
-          
-          // 선호도 기반 추천 (카테고리 선택 있을 때)
-          if (!hasMinimalPreferences && place.category) {
-            if (userPreferences.categories.includes(place.category)) {
-              recommendScore += 30;
-              
-              // 카테고리 이름 매핑
-              const categoryName = {
-                'tourist': '관광특구',
-                'heritage': '고궁·문화유산',
-                'station': '주요역',
-                'shopping': '발달상권',
-                'park': '공원'
-              }[place.category] || place.category;
-              
-              matchReason.push(`선호하는 장소 유형 '${categoryName}' 에 해당`);
-            }
-          } 
-          // 기본 추천 (카테고리 선택 없을 때)
-          else {
-            // 인기 장소에 가산점
-            if (importantAreas.includes(place.name)) {
-              recommendScore += 15;
-              matchReason.push('서울의 주요 인기 장소');
-            }
-            
-            // 카테고리 없을 때는 다양한 유형 보여주기 위해 분산
-            if (matchReason.length === 0) {
-              matchReason.push('종합적인 평가 기준으로 선정된 장소');
-            }
-          }
-          
-          return {
-            ...place,
-            recommendScore,
-            matchReason: matchReason.length > 0 ? matchReason : ['종합적인 점수가 높은 장소']
-          };
-        });
-        
-        // 점수에 따라 정렬하고 상위 5개만 선택
-        const recommendations = scored
-          .sort((a, b) => b.recommendScore - a.recommendScore)
-          .slice(0, 5);
-        
-        set({ recommendedPlaces: recommendations });
       },
       
       // 전역 추천 계산 (최적화 적용)
@@ -1426,7 +1324,7 @@ const usePopulationStore = create(
           processNextChunk();
         }, 100);
       },
-      
+
       // 글로벌 추천으로 통합된 함수:
       toggleRecommendations: async () => {
         const { 

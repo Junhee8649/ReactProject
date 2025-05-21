@@ -4,7 +4,6 @@ import usePopulationStore from '../store/populationStore';
 
 const RecommendedPlaces = () => {
   const { 
-    recommendedPlaces,       // 현재 지역 내 추천
     globalRecommendations,   // 전역 추천 (모든 수집된 지역 기반)
     showRecommendations, 
     toggleRecommendations,
