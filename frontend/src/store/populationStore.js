@@ -3,6 +3,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { debounce } from 'lodash';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 // 중요 지역 목록 정의 (데이터 사전 수집용)
 const importantAreas = [
   '강남 MICE 관광특구', '명동 관광특구', '홍대 관광특구', 
@@ -476,7 +478,7 @@ const usePopulationStore = create(
         try {
           set({ isLoading: true });
           console.log("Fetching areas...");
-          const response = await fetch('/api/areas');
+          const response = await fetch(`${API_BASE_URL}/api/areas`);
           
           if (!response.ok) {
             throw new Error(`HTTP error: ${response.status}`);
@@ -709,7 +711,7 @@ const usePopulationStore = create(
           }
           
           // API 요청 URL 생성
-          let url = `/api/population?area=${encodeURIComponent(area)}`;
+          let url = `${API_BASE_URL}/api/population?area=${encodeURIComponent(area)}`;
           
           if (forceRefresh) {
             const timestamp = new Date().getTime();
