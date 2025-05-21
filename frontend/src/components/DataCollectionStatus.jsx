@@ -11,6 +11,7 @@ const DataCollectionStatus = () => {
     cacheStatus
   } = usePopulationStore();
   
+  // 진행률 계산 - 더 간단하게
   const progress = Math.round((dataCollectionStatus.loaded / dataCollectionStatus.total) * 100);
   
   // 진행 중일 때는 간결한 형태로 표시
@@ -40,18 +41,16 @@ const DataCollectionStatus = () => {
       </div>
     );
   }
+
+  // 모든 핵심 지역 로드 확인
+  const allImportantAreasLoaded = dataCollectionStatus.loaded >= dataCollectionStatus.total;
   
   // 진행 중이 아니고 아직 완료되지 않은 경우
-  if (dataCollectionStatus.loaded < dataCollectionStatus.total) {
+  if (!allImportantAreasLoaded) {
     return (
       <div className="data-collection-status">
         <div className="status-header">
-          <h4>추천 시스템 데이터 수집</h4>
-          {!dataCollectionStatus.inProgress && (
-            <button onClick={startDataCollection} className="start-collection-btn">
-              {dataCollectionStatus.loaded > 0 ? '계속 수집' : '데이터 수집 시작'}
-            </button>
-          )}
+          <h4>핵심 지역 데이터 자동 수집 중</h4>
         </div>
         <div className="progress-container">
           <div className="progress-bar">
@@ -81,11 +80,11 @@ const DataCollectionStatus = () => {
         <polyline points="22 4 12 14.01 9 11.01"></polyline>
       </svg>
       <span>
-        핵심 지역 데이터 수집 완료 ({cacheStatus.areaCount}개/{120}개 지역).
-        {cacheStatus.areaCount > 50 ? " 정확한 추천이 가능합니다." : " 기본 추천이 가능합니다."}
+        핵심 지역 데이터 수집 완료 ({dataCollectionStatus.loaded}/{dataCollectionStatus.total}개 핵심 지역).
+        전체 {cacheStatus.areaCount}개/{120}개 지역 데이터 보유 중.
+        {cacheStatus.areaCount > 30 ? " 정확한 추천이 가능합니다." : " 기본 추천이 가능합니다."}
       </span>
       
-      {/* 캐시 정보 표시 */}
       {cacheStatus && cacheStatus.lastUpdated && (
         <div className="cache-info">
           <small>
