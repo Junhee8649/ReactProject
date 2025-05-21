@@ -1427,12 +1427,10 @@ const usePopulationStore = create(
         }, 100);
       },
       
-      // 추천 화면 토글
+      // 글로벌 추천으로 통합된 함수:
       toggleRecommendations: async () => {
         const { 
           showRecommendations, 
-          recommendedPlaces, 
-          globalRecommendations, 
           userPreferences, 
           cachedAllAreasData,
           isCollectingPreferredData
@@ -1453,46 +1451,35 @@ const usePopulationStore = create(
         // 중요: 추천을 요청할 때 데이터 수집 일시 중지 상태를 해제
         set({ pauseDataCollection: false });
         
+        // 모달 먼저 표시 (데이터 로딩 상태를 사용자에게 즉시 보여주기 위해)
+        set({ showRecommendations: true });
+        
         // 선호 카테고리가 설정되어 있으면 선호 카테고리 데이터 수집
-        // globalRecommendations 길이 체크 제거
-        if (userPreferences.categories && 
-            userPreferences.categories.length > 0) {
-          
-          // 모달 먼저 표시 (데이터 수집 상태를 보여주기 위해)
-          set({ 
-            showRecommendations: true, 
-            // 추가: 기존 추천 결과 초기화하여 새로 계산하도록
-            globalRecommendations: [] 
-          });
+        if (userPreferences.categories && userPreferences.categories.length > 0) {
+          // 기존 추천 결과 초기화
+          set({ globalRecommendations: [] });
           
           // 선호 카테고리 데이터 수집 시작
           const isCompleted = await get().collectPreferredCategoryData();
           
-          // 데이터 수집 완료 후 추천 계산
-          if (isCompleted) {
-            // 전역 추천이 가능하면 계산
-            if (cachedAllAreasData.length > 0) {
-              get().calculateGlobalRecommendations();
-            } else {
-              get().calculateRecommendations();
-            }
+          // 데이터 수집 완료 후 항상 글로벌 추천 계산
+          if (isCompleted && cachedAllAreasData.length > 0) {
+            get().calculateGlobalRecommendations();
           }
           
           return;
         }
         
-        // 기존 추천이 없는 경우 계산
-        if (globalRecommendations.length === 0 && recommendedPlaces.length === 0) {
-          get().calculateRecommendations();
-          
-          // 전역 추천이 가능하면 계산
+        // 기존 추천이 없는 경우 글로벌 추천만 계산
+        if (get().globalRecommendations.length === 0) {
+          // 캐시된 데이터가 있으면 글로벌 추천 계산
           if (cachedAllAreasData.length > 0) {
             get().calculateGlobalRecommendations();
+          } else {
+            // 캐시된 데이터가 없으면 데이터 수집 시작
+            get().startDataCollection();
           }
         }
-        
-        // 추천 모달 표시
-        set({ showRecommendations: true });
       },
       
       // 선호 카테고리의 장소 데이터 우선 수집
