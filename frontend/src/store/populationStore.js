@@ -1151,12 +1151,28 @@ const usePopulationStore = create(
           get().calculateGlobalRecommendations();
         }
       },
+
+      // 상태에 마지막 계산 시작 시간 관리 추가
+      lastCalculationTime: null,
       
       // 전역 추천 계산 (최적화 적용)
       calculateGlobalRecommendations: () => {
         console.log("전역 추천 계산 시작");
         
-        // 이미 계산 중이면 건너뛰기 - 이 부분은 유지하되 상태를 명확히 추적
+        // 계산 시작 전 안전장치 추가
+        const lastCalcTime = get().lastCalculationTime || 0;
+        const now = Date.now();
+        
+        // 마지막 계산 시작 후 1분이 지났으면 강제 리셋
+        if (get().isCalculatingRecommendations && (now - lastCalcTime > 60 * 1000)) {
+          console.log("이전 계산이 1분 이상 진행 중입니다. 상태 강제 리셋.");
+          set({ isCalculatingRecommendations: false });
+        }
+        
+        // 현재 시간을 마지막 계산 시간으로 설정
+        set({ lastCalculationTime: now });
+        
+        // 기존 로직
         if (get().isCalculatingRecommendations) {
           console.log("이미 추천 계산 중입니다. 시간: " + new Date().toISOString());
           return;
@@ -1186,14 +1202,30 @@ const usePopulationStore = create(
           cachedAllAreasData.forEach(place => {
             if (!placeIds.has(place.id)) {
               placeIds.add(place.id);
-              // 각 장소에 카테고리 정보 추가
-              const areaInfo = availableAreas.find(area => area.name === place.name) || {};
+              
+              // 변경: 장소와 카테고리 매핑 로직 개선
+              const areaInfo = availableAreas.find(area => 
+                area.name === place.name || 
+                (area.keywords && area.keywords.some(k => 
+                  k.includes(place.name.toLowerCase()) || 
+                  place.name.toLowerCase().includes(k)
+                ))
+              ) || {};
+              
+              // 추가: 매핑 성공 로그
+              if (areaInfo.category) {
+                console.log(`장소 매핑 성공: ${place.name} -> ${areaInfo.category}`);
+              }
+              
               uniquePlaces.push({
                 ...place,
                 category: areaInfo.category // 카테고리 정보 추가
               });
             }
           });
+          
+          // 추가: 로그 추가
+          console.log(`중복 제거 후 ${uniquePlaces.length}개 장소로 추천 계산`);
           
           // 작은 청크로 처리하여 UI 블로킹 방지
           const CHUNK_SIZE = 30;
@@ -1206,11 +1238,17 @@ const usePopulationStore = create(
               let topRecommendations = results
                 .sort((a, b) => b.recommendScore - a.recommendScore);
                 
+              // 추가: 점수 계산 결과 로그
+              console.log(`점수 계산 완료: ${results.length}개 장소, 최고점: ${results.length > 0 ? topRecommendations[0]?.recommendScore : 'N/A'}`);
+                
               // 선호 카테고리가 있을 경우, 해당 카테고리 장소만 우선 필터링
               if (!hasMinimalPreferences && userPreferences.categories.length > 0) {
                 const preferredCategoryPlaces = topRecommendations.filter(place => 
                   place.category && userPreferences.categories.includes(place.category)
                 );
+                
+                // 추가: 필터링 결과 로그
+                console.log(`선호 카테고리 필터링 결과: ${preferredCategoryPlaces.length}개 장소`);
                 
                 // 선호 카테고리 장소가 최소 3개 이상이면 해당 항목만 사용
                 if (preferredCategoryPlaces.length >= 3) {
@@ -1226,22 +1264,43 @@ const usePopulationStore = create(
                     ...otherPlaces.slice(0, 5 - preferredCategoryPlaces.length)
                   ];
                 }
+                // 추가: 선호 카테고리 장소가 없을 때의 대체 로직
+                else {
+                  console.log("선호 카테고리 장소 없음, 전체 결과 중 상위 항목 사용");
+                  // topRecommendations는 그대로 사용
+                }
               }
               
               // 최종 추천 결과 (상위 5개)
               topRecommendations = topRecommendations.slice(0, 5);
+              
+              // 추가: 빈 추천 리스트 확인 및 대체 로직
+              if (topRecommendations.length === 0 && results.length > 0) {
+                console.log("필터링 후 추천 결과가 없어 상위 점수 항목 사용");
+                topRecommendations = results
+                  .sort((a, b) => b.recommendScore - a.recommendScore)
+                  .slice(0, 5);
+              }
                   
               console.log(`추천 계산 완료: ${topRecommendations.length}개 항목`);
+              
+              // 추가: 최종 추천 목록 상세 로깅
+              topRecommendations.forEach((rec, idx) => {
+                console.log(`추천 #${idx+1}: ${rec.name}, 점수: ${rec.recommendScore}, 카테고리: ${rec.category || '미분류'}`);
+              });
 
               // 캐시 상태 갱신하여 정확한 지역 수 표시
               const updatedCacheStatus = cacheUtils.getCacheStatus();
               console.log(`현재 캐시된 지역 수: ${updatedCacheStatus.areaCount}`);
 
-              set({ 
-                globalRecommendations: topRecommendations,
-                isCalculatingRecommendations: false,
-                cacheStatus: updatedCacheStatus // 캐시 상태 갱신
-              });
+              // 변경: 상태 안전하게 업데이트
+              if (get().isCalculatingRecommendations) {
+                set({ 
+                  globalRecommendations: topRecommendations,
+                  isCalculatingRecommendations: false,
+                  cacheStatus: updatedCacheStatus // 캐시 상태 갱신
+                });
+              }
               return;
             }
             
@@ -1304,6 +1363,11 @@ const usePopulationStore = create(
                 if (matchReason.length === 0) {
                   matchReason.push('종합적인 평가 기준으로 선정된 장소');
                 }
+              }
+              
+              // 추가: 디버깅 - 높은 점수 받은 장소 로깅
+              if (recommendScore > 70) {
+                console.log(`높은 점수 장소: ${place.name}, 점수: ${recommendScore}, 이유: ${matchReason.join(', ')}`);
               }
               
               return {
