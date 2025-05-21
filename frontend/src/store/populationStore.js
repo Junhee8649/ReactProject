@@ -297,6 +297,7 @@ const usePopulationStore = create(
       // 검색 관련 상태
       availableAreas: [],
       areaCategories: [],
+      importantAreas, // 이 줄 추가
       selectedArea: null,
       searchText: '',
       searchResults: [],
@@ -417,17 +418,22 @@ const usePopulationStore = create(
         // 캐시 상태 로드
         const cacheStatus = cacheUtils.getCacheStatus();
         
-        // 캐시된 지역 수에 기반한 dataCollectionStatus 업데이트
+        // 수정: 실제 캐시된 핵심 지역 수 계산
+        const cachedImportantAreasCount = importantAreas.filter(area => 
+          cacheStatus.areaIds.includes(area)
+        ).length;
+        
         const dataCollectionStatus = {
           total: importantAreas.length,
-          loaded: cacheStatus.areaIds.length,
+          loaded: cachedImportantAreasCount, // 실제 캐시된 핵심 지역 수로 설정
           inProgress: false
         };
+        
+        console.log(`초기화: 캐시된 전체 지역 ${cacheStatus.areaCount}개, 핵심 지역 ${cachedImportantAreasCount}/${importantAreas.length}개`);
         
         set({ 
           cacheStatus, 
           dataCollectionStatus,
-          // 데이터 수집 기본값 일시 정지로 설정
           pauseDataCollection: true 
         });
         
@@ -754,18 +760,23 @@ const usePopulationStore = create(
           localStorage.setItem('last_cache_update', new Date().toISOString());
           
           // 캐시 상태 업데이트
-          const cacheStatus = cacheUtils.getCacheStatus();
-          const dataCollectionStatus = get().dataCollectionStatus;
-          dataCollectionStatus.loaded = Math.min(cacheStatus.areaCount, importantAreas.length);
-          
+          const updatedCacheStatus = cacheUtils.getCacheStatus();
+          // 핵심 중요 지역 교집합 계산
+          const cachedImportantAreasCount = importantAreas.filter(area => 
+            updatedCacheStatus.areaIds.includes(area)
+          ).length;
+
           // 상태 업데이트
           set({ 
             populationData: data,
             filteredData: data.places, 
             lastUpdated: new Date(),
             isLoading: false,
-            cacheStatus,
-            dataCollectionStatus
+            cacheStatus: updatedCacheStatus,
+            dataCollectionStatus: {
+              ...get().dataCollectionStatus,
+              loaded: cachedImportantAreasCount  // 실제 로드된 핵심 지역 수로 설정
+            }
           });
           
           // 캐시된 전체 데이터 업데이트
@@ -834,42 +845,58 @@ const usePopulationStore = create(
       startDataCollection: async () => {
         const { dataCollectionStatus, pauseDataCollection } = get();
         
-        // 이미 진행 중이거나 일시 중지된 경우 건너뛰기
+        // 이미 진행 중이면 처리 안함
         if (dataCollectionStatus.inProgress) {
           console.log("이미 데이터 수집이 진행 중입니다");
           return;
         }
         
-        // 일시 중지 상태 확인 및 로그
+        // 일시 중지 상태 확인
         if (pauseDataCollection) {
           console.log("데이터 수집이 일시 중지 상태입니다");
-          // 추가: 추천 화면에서 시작한 경우 일시 중지 해제
           if (get().showRecommendations) {
             console.log("추천 화면에서 시작하여 일시 중지 상태를 해제합니다");
             set({ pauseDataCollection: false });
           } else {
-            return; // 일반적인 경우 일시 중지 상태면 종료
+            return;
           }
+        }
+        
+        // 정확한 핵심 지역 수 계산
+        const cacheStatus = cacheUtils.getCacheStatus();
+        const cachedAreas = cacheStatus.areaIds || [];
+        const cachedImportantAreasCount = importantAreas.filter(area => 
+          cachedAreas.includes(area)
+        ).length;
+        
+        // 모든 핵심 지역이 이미 캐시되었는지 확인 - 무한 로드 방지
+        if (cachedImportantAreasCount >= importantAreas.length) {
+          console.log('모든 핵심 지역이 이미 캐시되었습니다.');
+          set({ 
+            dataCollectionStatus: {
+              ...dataCollectionStatus,
+              inProgress: false,
+              loaded: importantAreas.length
+            }
+          });
+          return;
         }
         
         set({ 
           dataCollectionStatus: {
             ...dataCollectionStatus,
-            inProgress: true
+            inProgress: true,
+            loaded: cachedImportantAreasCount // 정확한 값으로 업데이트
           }
         });
-        
-        // 이미 캐시된 지역 확인
-        const cacheStatus = cacheUtils.getCacheStatus();
-        const cachedAreas = cacheStatus.areaIds || [];
         
         // 아직 캐시되지 않은 중요 지역 필터링
         const areasToFetch = importantAreas
           .filter(area => !cachedAreas.includes(area))
-          .slice(0, 2); // 한 번에 최대 2개만 가져오기 (수정: 이전에는 1개만 가져왔음)
+          .slice(0, 2); // 한 번에 최대 2개만 가져오기
         
         if (areasToFetch.length === 0) {
-          console.log('모든 중요 지역이 이미 캐시되었습니다.');
+          console.log('캐시되지 않은 중요 지역이 없습니다.');
           set({ 
             dataCollectionStatus: {
               ...dataCollectionStatus,
@@ -882,78 +909,101 @@ const usePopulationStore = create(
         
         console.log(`${areasToFetch.length}개 지역의 데이터 수집 시작: ${areasToFetch.join(', ')}`);
         
-        // 작은 배치로 나누어 처리
-        for (const area of areasToFetch) {
-          try {
-            // 일시 중지 상태 확인
-            if (get().pauseDataCollection) {
-              console.log('데이터 수집이 일시 중지되었습니다.');
-              break;
-            }
-            
-            console.log(`${area} 데이터 가져오는 중...`);
-            
-            // 우선순위를 'low'로 설정하여 큐잉
-            const requestFn = async () => {
-              try {
-                const url = `/api/population?area=${encodeURIComponent(area)}`;
-                const response = await fetch(url);
+        // 데이터 수집 부분을 동기적으로 처리하도록 변경
+        try {
+          // 작은 배치로 나누어 처리
+          for (const area of areasToFetch) {
+            try {
+              // 일시 중지 상태 확인
+              if (get().pauseDataCollection) {
+                console.log('데이터 수집이 일시 중지되었습니다.');
                 
-                if (!response.ok) {
-                  console.warn(`${area} 가져오기 실패: ${response.status}`);
-                  return;
-                }
-                
-                const data = await response.json();
-                data.timestamp = Date.now();
-                
-                // 캐시에 저장
-                cacheUtils.saveAreaData(area, data);
-                localStorage.setItem('last_cache_update', new Date().toISOString());
-                
-                // 상태 업데이트
-                const updatedCacheStatus = cacheUtils.getCacheStatus();
-                const loaded = Math.min(updatedCacheStatus.areaCount, importantAreas.length);
-                
-                set(state => ({ 
-                  cacheStatus: updatedCacheStatus,
+                // 중요: inProgress 상태 꼭 false로 설정
+                set(state => ({
                   dataCollectionStatus: {
                     ...state.dataCollectionStatus,
-                    loaded
+                    inProgress: false
                   }
                 }));
                 
-                // 캐시된 전체 데이터 업데이트
-                const cachedData = cacheUtils.loadAllCachedAreas();
-                set({ cachedAllAreasData: cachedData });
-                
-                console.log(`${area} 데이터 수집 완료 (${loaded}/${importantAreas.length})`);
-              } catch (error) {
-                console.error(`${area} 데이터 로드 중 오류:`, error);
+                break;
               }
-            };
-            
-            get().queueRequest(requestFn, 'low');
-          } catch (error) {
-            console.error(`${area} 데이터 로드 중 오류:`, error);
+              
+              console.log(`${area} 데이터 가져오는 중...`);
+              
+              // API 직접 호출하여 동기적으로 처리
+              const url = `/api/population?area=${encodeURIComponent(area)}`;
+              const response = await fetch(url);
+              console.log(`${area} API 응답 상태:`, response.status, response.statusText);
+              
+              if (!response.ok) {
+                console.warn(`${area} 가져오기 실패: ${response.status}`);
+                continue; // 다음 지역으로 넘어가기
+              }
+              
+              const data = await response.json();
+              data.timestamp = Date.now();
+              
+              // 캐시에 저장
+              cacheUtils.saveAreaData(area, data);
+              localStorage.setItem('last_cache_update', new Date().toISOString());
+              
+              // 캐시 상태 및 핵심 지역 수 정확히 계산하여 업데이트
+              const updatedCacheStatus = cacheUtils.getCacheStatus();
+              const cachedImportantAreasCount = importantAreas.filter(area => 
+                updatedCacheStatus.areaIds.includes(area)
+              ).length;
+              
+              set(state => ({ 
+                cacheStatus: updatedCacheStatus,
+                dataCollectionStatus: {
+                  ...state.dataCollectionStatus,
+                  loaded: cachedImportantAreasCount
+                }
+              }));
+              
+              // 캐시된 전체 데이터 업데이트
+              const cachedData = cacheUtils.loadAllCachedAreas();
+              set({ cachedAllAreasData: cachedData });
+              
+              console.log(`${area} 데이터 수집 완료 (${cachedImportantAreasCount}/${importantAreas.length})`);
+              
+              // 요청 간 지연 추가
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+            } catch (error) {
+              console.error(`${area} 데이터 로드 중 오류:`, error);
+            }
           }
+          
+          // 모든 데이터 수집 완료 후 inProgress 상태 업데이트
+          set(state => ({ 
+            dataCollectionStatus: {
+              ...state.dataCollectionStatus,
+              inProgress: false
+            }
+          }));
+          
+          console.log('데이터 수집 완료');
+          
+          // 더 수집할 지역이 있고 일시 중지 상태가 아니면 다음 수집 예약
+          const latestStatus = get().dataCollectionStatus;
+          if (latestStatus.loaded < importantAreas.length && !get().pauseDataCollection) {
+            console.log('다음 데이터 수집 배치 예약 (10초 후)');
+            setTimeout(() => get().startDataCollection(), 10000);
+          }
+          
+        } catch (error) {
+          console.error('데이터 수집 중 오류:', error);
+          
+          // 오류 발생 시에도 inProgress 상태 업데이트
+          set(state => ({ 
+            dataCollectionStatus: {
+              ...state.dataCollectionStatus,
+              inProgress: false
+            }
+          }));
         }
-        
-        // 배치 처리 완료 후
-        setTimeout(() => {
-          // 일시 중지 상태가 아니고 아직 완료되지 않은 경우
-          if (!get().pauseDataCollection && get().dataCollectionStatus.loaded < importantAreas.length) {
-            // 다음 배치 처리를 위한 재귀 호출
-            get().startDataCollection();
-          } else {
-            set(state => ({ 
-              dataCollectionStatus: {
-                ...state.dataCollectionStatus,
-                inProgress: false
-              }
-            }));
-          }
-        }, 30000); // 30초 지연 (수정: 이전에는 10초)
       },
       
       filterByAgeGroup: (ageGroup) => {
