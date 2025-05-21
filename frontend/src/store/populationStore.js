@@ -434,8 +434,20 @@ const usePopulationStore = create(
         set({ 
           cacheStatus, 
           dataCollectionStatus,
-          pauseDataCollection: true 
+          pauseDataCollection: false  // 자동 수집 활성화로 변경
         });
+
+        // 초기화 마지막 부분에 아래 코드 추가
+        // 데이터 자동 수집 시작 (지연 시작)
+        setTimeout(() => {
+          const latestStatus = get().dataCollectionStatus;
+          // 아직 모든 핵심 지역이 로드되지 않았고, 일시중지 상태가 아니면 수집 시작
+          if (!get().pauseDataCollection && 
+              latestStatus.loaded < importantAreas.length) {
+            console.log('자동 데이터 수집 시작...');
+            get().startDataCollection();
+          }
+        }, 3000); // 3초 후 데이터 수집 시작 (초기 로딩 충돌 방지)
         
         // 이미 캐시된 데이터 로드 (필요한 것만)
         if (cacheStatus.areaCount > 0) {
