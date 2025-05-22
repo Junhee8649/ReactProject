@@ -1,14 +1,11 @@
-// frontend/src/PopulationApp.jsx 수정
-import React, { useEffect, useRef, useCallback } from 'react'; // useCallback 추가
+import React, { useEffect, useRef, useCallback } from 'react';
 import PopulationMap from './components/PopulationMap';
-import AgeGroupFilter from './components/AgeGroupFilter';
 import AreaSearch from './components/AreaSearch';
 import AreaCategories from './components/AreaCategories';
 import PlaceDetail from './components/PlaceDetail';
 import UserPreferences from './components/UserPreferences';
 import RecommendedPlaces from './components/RecommendedPlaces';
 import DataCollectionStatus from './components/DataCollectionStatus';
-import LoadingSequence from './components/LoadingSequence';
 import { optimizeResources } from './utils/performanceUtils';
 import usePopulationStore from './store/populationStore';
 import './PopulationApp.css';
@@ -20,6 +17,7 @@ function PopulationApp() {
     lastUpdated, 
     fetchData, 
     fetchAreas,
+    initializeStore, 
     selectArea,
     availableAreas,
     error,
@@ -37,13 +35,16 @@ function PopulationApp() {
     }
   }, [selectedArea, fetchData]);
   
-  // 앱 초기화 시 필요한 데이터 로드 - 최적화
+  // 앱 초기화 시 필요한 데이터 로드 - LoadingSequence 로직 통합
   useEffect(() => {
     // 이미 초기화되었으면 실행하지 않음
     if (isInitializedRef.current) return;
     isInitializedRef.current = true;
     
     console.log("앱 초기화 시작");
+    
+    // ⭐ 핵심: 스토어 초기화 먼저 실행 (기존 LoadingSequence 역할)
+    initializeStore();
     
     // 지역 목록 가져오기 (한 번만 실행)
     fetchAreas();
@@ -96,7 +97,7 @@ function PopulationApp() {
       window.removeEventListener('offline', handleOnlineStatus);
       console.log("앱 리소스 정리 완료");
     };
-  }, [fetchAreas, fetchData, storeOptimizeResources, refreshData]); // startDataCollection, isLoading 제거
+  }, [fetchAreas, fetchData, initializeStore, storeOptimizeResources, refreshData]); // ⭐ initializeStore 의존성 추가
   
   // 선택된 지역 이름 가져오기 - 최적화
   const getSelectedAreaName = useCallback(() => {
@@ -119,7 +120,8 @@ function PopulationApp() {
   
   return (
     <>
-      <LoadingSequence />
+      {/* ❌ LoadingSequence 제거 - 즉시 사용 가능한 UI 제공 */}
+      {/* <LoadingSequence /> */}
       
       <div className="app-container">
         <header className="app-header">
@@ -135,10 +137,9 @@ function PopulationApp() {
           <div className="control-panel">
             <AreaSearch />
             <AreaCategories />
-            <AgeGroupFilter />
           </div>
           
-          {/* 데이터 수집 상태 표시 */}
+          {/* ✅ 핵심 지역 데이터 수집 상태 표시 - 기술적 도전성 증명 */}
           <DataCollectionStatus />
           
           {/* 사용자 선호도 컴포넌트 */}

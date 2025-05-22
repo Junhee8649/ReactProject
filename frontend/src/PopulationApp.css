@@ -2128,3 +2128,22 @@ img.lazy-load.loaded {
   color: var(--color-gray-600);
   font-size: 0.9rem;
 }
+
+/* 새로고침 섹션 스타일 */
+.refresh-section {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: var(--color-gray-50);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-gray-200);
+}
+
+.refresh-info {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.refresh-info small {
+  color: var(--color-gray-500);
+  font-size: 0.8rem;
+}

@@ -1,4 +1,3 @@
-// serverless/data/area-list.js
 export const areaList = [
   // 관광특구
   { id: "강남 MICE 관광특구", name: "강남 MICE 관광특구", category: "tourist", coordinates: [37.5065, 127.0617] },

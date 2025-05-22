@@ -1,4 +1,3 @@
-// frontend/src/components/PlaceDetail.jsx - 개선된 버전
 import React, { useState } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,

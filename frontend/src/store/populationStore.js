@@ -1,4 +1,3 @@
-// frontend/src/store/populationStore.js
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { debounce } from 'lodash';

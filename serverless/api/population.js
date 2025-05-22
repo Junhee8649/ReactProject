@@ -1,4 +1,3 @@
-// serverless/api/population.js
 export default async function handler(req, res) {
   // GET 요청만 허용
   if (req.method !== "GET") {
