@@ -1,7 +1,6 @@
-// frontend/src/PopulationApp.jsx 수정
-import React, { useEffect, useRef, useCallback } from 'react'; // useCallback 추가
+// frontend/src/PopulationApp.jsx - AgeGroupFilter 제거된 버전
+import React, { useEffect, useRef, useCallback } from 'react';
 import PopulationMap from './components/PopulationMap';
-import AgeGroupFilter from './components/AgeGroupFilter';
 import AreaSearch from './components/AreaSearch';
 import AreaCategories from './components/AreaCategories';
 import PlaceDetail from './components/PlaceDetail';
@@ -96,7 +95,7 @@ function PopulationApp() {
       window.removeEventListener('offline', handleOnlineStatus);
       console.log("앱 리소스 정리 완료");
     };
-  }, [fetchAreas, fetchData, storeOptimizeResources, refreshData]); // startDataCollection, isLoading 제거
+  }, [fetchAreas, fetchData, storeOptimizeResources, refreshData]);
   
   // 선택된 지역 이름 가져오기 - 최적화
   const getSelectedAreaName = useCallback(() => {
@@ -135,7 +134,6 @@ function PopulationApp() {
           <div className="control-panel">
             <AreaSearch />
             <AreaCategories />
-            <AgeGroupFilter />
           </div>
           
           {/* 데이터 수집 상태 표시 */}
