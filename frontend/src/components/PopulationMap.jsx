@@ -1,4 +1,3 @@
-// frontend/src/components/PopulationMap.jsx
 import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Circle, Tooltip, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';

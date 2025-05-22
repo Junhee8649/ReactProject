@@ -1,4 +1,3 @@
-// frontend/src/components/RecommendedPlaces.jsx
 import React from 'react';
 import usePopulationStore from '../store/populationStore';
 

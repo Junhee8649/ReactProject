@@ -1,4 +1,3 @@
-// frontend/src/components/UserPreferences.jsx
 import React from 'react';
 import usePopulationStore from '../store/populationStore';
 
