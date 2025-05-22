@@ -1,4 +1,3 @@
-// frontend/src/components/AreaSearch.jsx - 개선된 버전
 import React, { useState, useEffect } from 'react';
 import usePopulationStore from '../store/populationStore';
 
