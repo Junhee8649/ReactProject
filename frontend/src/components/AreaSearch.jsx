@@ -1,3 +1,4 @@
+// frontend/src/components/AreaSearch.jsx - 개선된 버전
 import React, { useState, useEffect } from 'react';
 import usePopulationStore from '../store/populationStore';
 
@@ -15,10 +16,9 @@ const AreaSearch = () => {
     availableAreas
   } = usePopulationStore();
   
-  const [lastSearched, setLastSearched] = useState('');
   const [isSearchResultsVisible, setIsSearchResultsVisible] = useState(false);
   
-  // 인기 지역 리스트 - 실제 데이터에 맞게 조정 필요
+  // 인기 지역 리스트
   const popularAreas = [
     '강남 MICE 관광특구', '명동 관광특구', '홍대 관광특구', 
     '동대문 관광특구', '경복궁', '서울역'
@@ -36,18 +36,26 @@ const AreaSearch = () => {
         area.name.toLowerCase().includes(lowerQuery) || 
         (area.keywords && area.keywords.some(k => k.includes(lowerQuery)))
       )
-      .slice(0, 3); // 상위 3개만 보여주기
+      .slice(0, 3);
   };
   
-  // 재검색 처리
-  const handleResearch = () => {
-    if (selectedArea) {
-      selectArea(selectedArea);
-      setSearchFeedback("선택된 지역 데이터를 새로고침합니다.");
-    } else if (lastSearched) {
-      fetchData(lastSearched, true);
-      setSearchFeedback(`"${lastSearched}" 데이터를 새로고침합니다.`);
-    }
+  // 선택된 지역 이름 가져오기
+  const getSelectedAreaName = () => {
+    if (!selectedArea) return null;
+    const area = availableAreas.find(a => a.id === selectedArea);
+    return area ? area.name : selectedArea;
+  };
+  
+  // 🔧 개선된 새로고침 처리
+  const handleRefreshSelectedArea = () => {
+    if (!selectedArea) return;
+    
+    const areaName = getSelectedAreaName();
+    console.log(`지역 데이터 강제 새로고침: ${areaName}`);
+    
+    // 강제 새로고침으로 최신 데이터 가져오기
+    fetchData(selectedArea, true);
+    setSearchFeedback(`"${areaName}" 지역의 최신 데이터를 가져오는 중입니다.`);
   };
   
   // 검색 입력창 변경 핸들러
@@ -116,7 +124,7 @@ const AreaSearch = () => {
           </button>
         </div>
         
-        {/* 검색 결과 - 검색창 바로 아래에 위치 */}
+        {/* 검색 결과 */}
         {isSearchResultsVisible && searchText.trim() !== '' && (
           <div className="search-results">
             {searchResults.length > 0 ? (
@@ -141,7 +149,7 @@ const AreaSearch = () => {
                 </div>
               ))
             ) : (
-              // 검색 결과가 없는 경우 - 인기/추천 지역 표시
+              // 검색 결과가 없는 경우
               <div className="no-results-content">
                 <p>검색 결과가 없습니다. 인기 지역을 확인해보세요:</p>
                 <div className="suggested-areas">
@@ -187,18 +195,28 @@ const AreaSearch = () => {
         </div>
       )}
       
-      {/* 재검색 버튼은 검색 결과 영역과 분리하여 아래에 배치 */}
-      {(selectedArea || lastSearched) && (
-        <button 
-          className="refresh-search-btn"
-          onClick={handleResearch}
-          disabled={isLoading}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
-          </svg>
-          {selectedArea ? '선택 지역 새로고침' : `"${lastSearched}" 재검색`}
-        </button>
+      {/* 🔧 개선된 새로고침 버튼 - 선택된 지역이 있을 때만 표시 */}
+      {selectedArea && (
+        <div className="refresh-section">
+          <button 
+            className="refresh-search-btn"
+            onClick={handleRefreshSelectedArea}
+            disabled={isLoading}
+            title="선택된 지역의 최신 데이터를 가져옵니다"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/>
+            </svg>
+            {isLoading ? '새로고침 중...' : `"${getSelectedAreaName()}" 데이터 새로고침`}
+          </button>
+          
+          {/* 추가 정보 표시 */}
+          <div className="refresh-info">
+            <small>
+              💡 캐시된 데이터를 무시하고 서버에서 최신 정보를 가져옵니다
+            </small>
+          </div>
+        </div>
       )}
       
       {/* 모바일용 오버레이 배경 */}
