@@ -1,4 +1,3 @@
-// serverless/api/areas.js
 import { areaList, processAreasWithKeywords, categories } from '../data/area-list';
 
 export default function handler(req, res) {

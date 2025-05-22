@@ -1,4 +1,3 @@
-// frontend/src/components/LoadingSequence.jsx
 import React, { useEffect, useState } from 'react';
 import usePopulationStore from '../store/populationStore';
 

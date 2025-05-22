@@ -1,5 +1,3 @@
-// frontend/src/utils/performanceUtils.js
-
 // 중요 지역 목록 정의 (미리 로딩할 지역들)
 const essentialAreas = [
   '강남 MICE 관광특구', '명동 관광특구', '홍대 관광특구', 

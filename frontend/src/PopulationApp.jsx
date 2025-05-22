@@ -1,4 +1,3 @@
-// frontend/src/PopulationApp.jsx - AgeGroupFilter 제거된 버전
 import React, { useEffect, useRef, useCallback } from 'react';
 import PopulationMap from './components/PopulationMap';
 import AreaSearch from './components/AreaSearch';

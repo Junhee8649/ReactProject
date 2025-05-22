@@ -1,4 +1,3 @@
-// frontend/src/components/AreaSearch.jsx
 import React, { useState, useEffect } from 'react';
 import usePopulationStore from '../store/populationStore';
 
