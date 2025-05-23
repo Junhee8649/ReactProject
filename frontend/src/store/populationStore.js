@@ -1518,13 +1518,58 @@ const usePopulationStore = create(
             // 다음 청크 처리
             const chunk = places.splice(0, Math.min(CHUNK_SIZE, places.length));
             
-            // 🔥 이 청크에 대한 점수 계산 (여기를 수정해야 함)
-            const scoredChunk = chunk.map(place => {
-              // 기본 추천 점수 계산
+            // 🔥 1단계: 이상적인 선호도 매칭으로 필터링
+            const filteredChunk = chunk.filter(place => {
+              const isQuietPlace = ['여유', '보통'].includes(place.congestionLevel);
+              return userPreferences.preferQuiet === isQuietPlace;
+            });
+            
+            // 🔥 2단계: 선호도 매칭 실패 시 차선책 적용
+            let finalChunk = filteredChunk;
+            let isSecondChoice = false; // 차선책 여부 플래그
+            
+            if (filteredChunk.length === 0) {
+              console.log('선호도에 맞는 장소가 없어 차선책 적용 중...');
+              isSecondChoice = true;
+              
+              if (userPreferences.preferQuiet) {
+                // 조용한 곳 선호 → 상대적으로 덜 붐비는 순서로
+                finalChunk = chunk
+                  .filter(place => ['약간 붐빔'].includes(place.congestionLevel))
+                  .slice(0, 10); // 최대 10개만
+                
+                // 그것도 없으면 전체에서 가장 덜 붐비는 곳들
+                if (finalChunk.length === 0) {
+                  finalChunk = chunk
+                    .sort((a, b) => {
+                      const levels = ['여유', '보통', '약간 붐빔', '붐빔', '매우 붐빔'];
+                      return levels.indexOf(a.congestionLevel) - levels.indexOf(b.congestionLevel);
+                    })
+                    .slice(0, 5);
+                }
+              } else {
+                // 활기찬 곳 선호 → 상대적으로 더 붐비는 순서로
+                finalChunk = chunk
+                  .filter(place => ['보통'].includes(place.congestionLevel))
+                  .slice(0, 10);
+                  
+                if (finalChunk.length === 0) {
+                  finalChunk = chunk
+                    .sort((a, b) => {
+                      const levels = ['여유', '보통', '약간 붐빔', '붐빔', '매우 붐빔'];
+                      return levels.indexOf(b.congestionLevel) - levels.indexOf(a.congestionLevel);
+                    })
+                    .slice(0, 5);
+                }
+              }
+            }
+            
+            // 🔥 3단계: 최종 필터링된 장소들로 점수 계산
+            const scoredChunk = finalChunk.map(place => {
               let recommendScore = 50;
               let matchReason = [];
               
-              // 선호 나이대에 따른 점수 계산 (공통)
+              // 선호 나이대 점수 (기존 유지)
               const ageGroupRate = place.ageGroups[userPreferences.preferredAgeGroup] || 0;
               recommendScore += ageGroupRate * 1.5;
               
@@ -1532,20 +1577,27 @@ const usePopulationStore = create(
                 matchReason.push(`${userPreferences.preferredAgeGroup.replace('s', '대')} 비율이 ${ageGroupRate.toFixed(1)}%로 높음`);
               }
               
-              // 장소 분위기에 따른 점수 계산 (공통)
+              // 🔥 혼잡도 매칭 결과에 따른 점수 및 설명
               const isQuietPlace = ['여유', '보통'].includes(place.congestionLevel);
-              if ((userPreferences.preferQuiet && isQuietPlace) || 
-                  (!userPreferences.preferQuiet && !isQuietPlace)) {
-                recommendScore += 30;
-                
+              
+              if (!isSecondChoice) {
+                // 완벽 매칭인 경우
                 if (userPreferences.preferQuiet && isQuietPlace) {
                   matchReason.push(`혼잡도가 '${place.congestionLevel}'로 조용한 분위기`);
                 } else if (!userPreferences.preferQuiet && !isQuietPlace) {
                   matchReason.push(`혼잡도가 '${place.congestionLevel}'로 활기찬 분위기`);
                 }
+              } else {
+                // 차선책인 경우
+                recommendScore -= 10; // 차선책이므로 약간 감점
+                if (userPreferences.preferQuiet) {
+                  matchReason.push(`현재 시간대 기준 상대적으로 덜 붐비는 곳 (${place.congestionLevel})`);
+                } else {
+                  matchReason.push(`현재 시간대 기준 상대적으로 더 활기찬 곳 (${place.congestionLevel})`);
+                }
               }
               
-              // 선호도 기반 추천 (카테고리 선택 있을 때)
+              // 카테고리 점수 (기존 유지)
               if (!hasMinimalPreferences && place.category) {
                 if (userPreferences.categories.includes(place.category)) {
                   recommendScore += 30;
@@ -1584,7 +1636,7 @@ const usePopulationStore = create(
               return {
                 ...place,
                 recommendScore,
-                matchReason: matchReason.length > 0 ? matchReason : ['종합적인 점수가 높은 장소']
+                matchReason: matchReason.length > 0 ? matchReason : ['선호도에 맞는 장소']
               };
             });
             
