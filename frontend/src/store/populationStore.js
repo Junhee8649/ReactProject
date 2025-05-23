@@ -2,7 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { debounce } from 'lodash';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+// 기존 코드에 fallback만 추가
+const API_BASE_URL = '';
+
+console.log('🔍 import.meta.env.VITE_API_URL:', import.meta.env.VITE_API_URL);
+console.log('🔍 API_BASE_URL:', API_BASE_URL);
+console.log('🔍 window.location.origin:', window.location.origin);
 
 // 중요 지역 목록 정의 (데이터 사전 수집용)
 const importantAreas = [
