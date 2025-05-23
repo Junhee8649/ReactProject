@@ -1,4 +1,4 @@
-import { areaList, processAreasWithKeywords, categories } from '../data/area-list';
+import { areaList, processAreasWithKeywords, categories } from './data/area-list';
 
 export default function handler(req, res) {
   // GET 요청만 허용
