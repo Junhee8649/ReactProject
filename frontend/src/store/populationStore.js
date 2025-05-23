@@ -1518,7 +1518,7 @@ const usePopulationStore = create(
             // 다음 청크 처리
             const chunk = places.splice(0, Math.min(CHUNK_SIZE, places.length));
             
-            // 이 청크에 대한 점수 계산
+            // 🔥 이 청크에 대한 점수 계산 (여기를 수정해야 함)
             const scoredChunk = chunk.map(place => {
               // 기본 추천 점수 계산
               let recommendScore = 50;
