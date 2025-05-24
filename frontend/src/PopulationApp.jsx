@@ -159,7 +159,12 @@ function PopulationApp() {
           
           <PopulationMap />
           
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <div className="error-container">
+              <div className="error-icon">⚠️</div>
+              {error}
+            </div>
+          )}
           
           {selectedPlace && (
             <div ref={placeDetailRef}>
