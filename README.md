@@ -3,7 +3,7 @@
 서울시 실시간 인구·혼잡도 데이터로 **"지금 갈 만한 곳"을 추천**하는 웹 앱.
 사용자 선호(나이대·분위기·카테고리)에 맞춰 현재 시점의 장소를 점수화해 보여줍니다.
 
-🔗 **라이브 데모: [seoulpeople.vercel.app](https://seoulpeople.vercel.app)**
+> 🔗 배포: [seoulpeople.vercel.app](https://seoulpeople.vercel.app)
 
 ## 왜 만들었나 (Painpoint)
 
