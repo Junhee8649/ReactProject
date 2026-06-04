@@ -1,16 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { debounce } from 'lodash';
+import { importantAreas, getCacheExpiry } from './cachePolicy';
 
 const API_BASE_URL = '';  // 모든 환경에서 상대경로 사용
 
-// 중요 지역 목록 정의 (데이터 사전 수집용)
-const importantAreas = [
-  '강남 MICE 관광특구', '명동 관광특구', '홍대 관광특구', 
-  '동대문 관광특구', '이태원 관광특구', '잠실 관광특구',
-  '광화문·덕수궁', '경복궁', '서울역', '강남역', '홍대입구역(2호선)',
-  '가로수길', '성수카페거리', '여의도한강공원', '북촌한옥마을'
-];
+// 중요 지역 목록·캐시 만료 정책은 cachePolicy.js(단일 출처)에서 가져온다.
 
 // 캐시 관리 설정
 const CACHE_VERSION = '1.0';
@@ -36,20 +31,9 @@ const congestionScores = {
 
 // 개선된 캐시 유틸리티
 const cacheUtils = {
-  // 동적 캐시 만료 시간
-  getCacheExpiry: (areaId) => {
-    const hour = new Date().getHours();
-    const isImportantArea = importantAreas.includes(areaId);
-    
-    // 피크 시간에는 데이터가 더 자주 변함
-    if ((hour >= 7 && hour <= 10) || (hour >= 17 && hour <= 20)) {
-      return isImportantArea ? 15 * 60 * 1000 : 30 * 60 * 1000; // 15분 또는 30분
-    }
-    
-    // 비피크 시간에는 데이터가 더 안정적
-    return isImportantArea ? 60 * 60 * 1000 : 3 * 60 * 60 * 1000; // 1시간 또는 3시간
-  },
-  
+  // 동적 캐시 만료 시간 (정책은 cachePolicy.js 단일 출처에 위임)
+  getCacheExpiry: (areaId) => getCacheExpiry(areaId),
+
   // 지역 데이터 저장
   saveAreaData: (areaId, data) => {
     try {
