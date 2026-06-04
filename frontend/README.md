@@ -10,6 +10,7 @@ npm run dev      # 개발 서버 (Vite HMR)
 npm run build    # 프로덕션 빌드 → dist/
 npm run preview  # 빌드 산출물 로컬 미리보기
 npm run lint     # ESLint
+npm test         # Vitest (cachePolicy 단위 테스트)
 ```
 
 ## 구조
@@ -35,7 +36,7 @@ src/
 
 - **캐시 만료 정책(단일 출처)**: `store/cachePolicy.js` → `getCacheExpiry` / `CACHE_TTL`
 - **추천 점수 계산**: `store/populationStore.js` → `calculatePlaceScore` (기본 50 + 나이대·혼잡도·카테고리)
-- **차선책 fallback**: 전역 추천 계산 내 2~3단계 대체 로직
+- **차선책 fallback**: 전역 추천 계산 내 2–3단계 대체 로직
 - **3분 폴링·오프라인 감지**: `PopulationApp.jsx`의 `useEffect`
 
 ## 캐시 절감 측정
