@@ -1,14 +1,16 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import PopulationMap from './components/PopulationMap';
 import AreaSearch from './components/AreaSearch';
 import AreaCategories from './components/AreaCategories';
-import PlaceDetail from './components/PlaceDetail';
 import UserPreferences from './components/UserPreferences';
 import RecommendedPlaces from './components/RecommendedPlaces';
 import DataCollectionStatus from './components/DataCollectionStatus';
 import { optimizeResources } from './utils/performanceUtils';
 import usePopulationStore from './store/populationStore';
 import './PopulationApp.css';
+
+// PlaceDetail은 장소 선택 시에만 렌더되고 recharts(차트)를 사용하므로 지연 로딩
+const PlaceDetail = lazy(() => import('./components/PlaceDetail'));
 
 function PopulationApp() {
   const { 
@@ -168,7 +170,9 @@ function PopulationApp() {
           
           {selectedPlace && (
             <div ref={placeDetailRef}>
-              <PlaceDetail />
+              <Suspense fallback={<div className="place-detail-loading">상세 정보 불러오는 중…</div>}>
+                <PlaceDetail />
+              </Suspense>
             </div>
           )}
           
