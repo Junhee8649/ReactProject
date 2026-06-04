@@ -46,11 +46,15 @@ node scripts/cache-benchmark.js
 
 캐시 정책(`cachePolicy.js`)을 사용 시나리오로 시뮬레이션해 외부 API 호출 절감률을 출력합니다(결정적·재현 가능, 라이브 API 불필요).
 
-## 빌드 산출물 (참고)
+## 빌드 산출물 (참고, 코드 스플리팅 적용 후)
 
-| 항목 | 크기 | gzip |
-|---|---|---|
-| JS | 889.96 kB | 265.26 kB |
-| CSS | 46.38 kB | 11.73 kB |
+| 청크 | 크기 | gzip | 로딩 |
+|---|---|---|---|
+| index (앱) | 316.99 kB | 103.70 kB | 초기 |
+| map-vendor (leaflet) | 154.75 kB | 45.22 kB | 초기 |
+| react-vendor | 11.95 kB | 4.25 kB | 초기 |
+| PlaceDetail (recharts) | 402.32 kB | 111.21 kB | 지연(장소 선택 시) |
+| CSS | 46.38 kB | 11.73 kB | 초기 |
 
-> JS 단일 청크가 권장치(500kB)를 초과 — Leaflet/Recharts 코드 스플리팅이 다음 개선 과제.
+> **초기 JS 합계 483.69 kB / gzip 153.17 kB** (단일 청크 890kB 대비 −45.6%).
+> `vite.config.js`의 `manualChunks` + `PopulationApp.jsx`의 `React.lazy(PlaceDetail)`로 분할.
