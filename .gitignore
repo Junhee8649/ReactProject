@@ -48,3 +48,6 @@ npm-debug.log*
 .pytest_cache/
 coverage/
 .vercel
+
+# Local Claude Code config/skills
+.claude/
