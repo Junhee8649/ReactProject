@@ -1,5 +1,14 @@
 # 서울시 실시간 인구 핫스팟
 
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=white" />
+  <img src="https://img.shields.io/badge/Zustand-5-443E38?logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/React--Leaflet-Map-199900?logo=leaflet&logoColor=white" />
+  <img src="https://img.shields.io/badge/Recharts-Chart-FF6384" />
+  <img src="https://img.shields.io/badge/Vercel-Serverless-000000?logo=vercel&logoColor=white" />
+</p>
+
 서울시 실시간 인구·혼잡도 데이터로 **"지금 갈 만한 곳"을 추천**하는 웹 앱.
 사용자 선호(나이대·분위기·카테고리)에 맞춰 현재 시점의 장소를 점수화해 보여줍니다.
 
@@ -49,7 +58,7 @@
 
 ### 문제 3. 원본 API의 지역명이 제각각이라 검색이 안 된다
 
-- **해결** 서버리스 함수에서 **별칭 매핑 테이블** 적용(`홍대`/`홍익대`/`홍대역` → `홍대 관광특구`) + 키워드 기반 검색
+- **해결** 서버리스 함수에서 **별칭 매핑 테이블** 적용(`홍대`/`홍익대` → `홍대 관광특구`, `홍대역`/`홍대입구` → `홍대입구역(2호선)`) + 키워드 기반 검색
 - **결과** 사용자가 일상 표현으로 검색해도 정확한 지역 데이터로 연결
 
 ### 문제 4. 네트워크가 끊기면 앱이 멈춘다
@@ -69,7 +78,7 @@
 | 혼잡도 레벨 | 5단계 | 여유–매우 붐빔 |
 | 초기 JS 번들 | 483.69 kB / gzip 153.17 kB | 코드 스플리팅 후 실측 (분할 전 889.96kB에서 −45.6%) |
 | 지연 로딩 청크 | recharts 402.32 kB | 장소 선택 시에만 로드 |
-| 빌드 산출물(CSS) | 46.38 kB / gzip 11.73 kB | 실측 |
+| 빌드 산출물(CSS) | 46.55 kB / gzip 11.75 kB | 실측 |
 
 ## 기술 스택
 
@@ -112,5 +121,6 @@
 
 ## 알려진 한계
 
-- **호출 절감 수치**(12.5–83.3%)는 캐시 정책 시뮬레이션 기반입니다. 실제 트래픽 분포에 따라 달라질 수 있습니다.
-- 데이터 출처가 서울시 실시간 도시데이터로 한정되어 타 지역은 지원하지 않습니다.
+- **호출 절감 수치**(12.5–83.3%)는 캐시 정책 시뮬레이션으로 측정한 값으로, 실제 트래픽 패턴에 따라 달라질 수 있습니다.
+- 서울시 실시간 도시데이터에만 의존하므로 서울 외 지역은 다루지 않습니다.
+- 혼잡도는 서울시가 제공하는 시점의 값으로, 원본 API 갱신 주기만큼의 시차가 존재합니다.
